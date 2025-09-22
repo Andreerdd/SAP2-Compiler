@@ -1,0 +1,5 @@
+# Pasta de build do CMake/CLion
+cmake-build-*/
+
+# Arquivos de configuração do projeto
+.idea/
