@@ -3,7 +3,7 @@
 #include "Interpreter/ErrorCodes.h"
 #include "Interpreter/interpreter.h"
 
-#define DEBUG_FILE "../test.sap2"
+#define DEBUG_FILE "../test.asm"
 
 
 int main(int argc, char ** argv) {
