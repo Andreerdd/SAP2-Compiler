@@ -8,6 +8,7 @@
 
 #include "environment.h"
 #include "ErrorCodes.h"
+#include "Instructions/Instructions.h"
 #include "Utils/Utils.h"
 
 /**
@@ -18,7 +19,7 @@
  * @param key elemento que se quer encontrar
  * @return posição para colocar
  */
-int find_address_insertion_point(uhex2_t arr[], int size, uhex2_t key) {
+int find_address_insertion_point(hex2_t arr[], int size, hex2_t key) {
     int low = 0;
     int high = size - 1;
     int mid;
@@ -69,6 +70,16 @@ int charToRegister(char c) {
     }
 }
 
+int isAddressUsed(Environment * env, uhex2_t address) {
+    int *found_item = bsearch(&address,
+        env->usedAddresses,
+        env->usedAddressesSize,
+        sizeof(hex2_t),
+        comp_hex2);
+    return found_item != NULL;
+}
+
+
 /**
  * Adiciona um endereço ao endereços usados
  * @param env o ambiente do SAP2
@@ -77,7 +88,7 @@ int charToRegister(char c) {
 void addAddressToUsedMemory(Environment * env, uhex2_t address) {
     // Realoca para adicionar o endereço
     size_t newSize = env->usedAddressesSize + 1;
-    uhex2_t * temp = (uhex2_t *)realloc(env->usedAddresses, sizeof(uhex2_t) * newSize);
+    uhex2_t * temp = realloc(env->usedAddresses, sizeof(uhex2_t) * newSize);
     if (temp == NULL) {
         WARN("Instrucao %d: os dados dessa instrucao podem nao ter sido corretamente guardados na tabela de memoria usada.",
             env->currentInstruction);
@@ -88,12 +99,11 @@ void addAddressToUsedMemory(Environment * env, uhex2_t address) {
     insertAddressIntoMemory(env->usedAddresses, &env->usedAddressesSize, address);
 }
 
-int isAddressUsed(Environment * env, uhex2_t address) {
-    int *found_item = bsearch(&address, env->usedAddresses, env->usedAddressesSize, sizeof(uhex2_t), comp_hex2);
-    return found_item != NULL;
-}
-
-void addToMemoryHex1(Environment * env, uint8_t hex) {
+void addToMemoryHex1(Environment * env, hex1_t hex) {
+    if (env->isFirstPass) {
+        env->programCounter++;
+        return;
+    }
     if (env->memory == NULL)
         EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
             "Erro interno: a memoria nao foi alocada.\nVerifique se ha memoria disponivel no dispositivo.");
@@ -112,12 +122,50 @@ void addToMemoryHex1(Environment * env, uint8_t hex) {
         WARN("A posicao de memoria \"%x\" vai ser sobrescrita, mas ha conteudo nela.\nIsso pode causar comportamentos inesperados.", env->programCounter);
 
     // Sobrescreve e incrementa o contador de programa
-    env->memory[env->programCounter] = hex;
+    env->memory[env->programCounter] = (memoryUnit_t) {
+        .value = hex,
+        .annotation = EMPTY_ANNOTATION
+    };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
 }
 
-void addToMemoryHex2(Environment * env, uhex2_t hex) {
+void addToMemoryHex1Annotation(Environment * env, uhex1_t hex, const char* text) {
+    if (env->isFirstPass) {
+        env->programCounter++;
+        return;
+    }
+    if (env->memory == NULL)
+        EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
+            "Erro interno: a memoria nao foi alocada.\nVerifique se ha memoria disponivel no dispositivo.");
+    if (env->programCounter >= MEMORY_SIZE)
+        EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
+            "A memoria RAM esta cheia.\nPossivelmente, seu codigo ultrapassou o limite de memoria.");
+    if (env->programCounter < STARTER_MEMORY_ADDRESS)
+        V_EXIT(EXIT_READ_ONLY_ADDRESS,
+            "A posicao de memoria \"%x\" eh de apenas leitura (Read-Only)\nmas tentaram escrever nela.", env->programCounter);
+
+    // Se chegou aqui, a memória ainda está no intervalo
+
+    // Verifica se tem algo nela (para avisar o usuário que ele
+    // está sobrescrevendo algo)
+    if (isAddressUsed(env, env->programCounter))
+        WARN("A posicao de memoria \"%x\" vai ser sobrescrita, mas ha conteudo nela.\nIsso pode causar comportamentos inesperados.", env->programCounter);
+
+    // Sobrescreve e incrementa o contador de programa
+    env->memory[env->programCounter] = (memoryUnit_t) {
+        .value = hex,
+        .annotation = text
+    };
+    addAddressToUsedMemory(env, env->programCounter);
+    env->programCounter++;
+}
+
+void addToMemoryHex2(Environment * env, hex2_t hex) {
+    if (env->isFirstPass) {
+        env->programCounter += 2;
+        return;
+    }
     if (env->memory == NULL)
         EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
             "Erro interno: a memoria nao foi alocada.\nVerifique se ha memoria disponivel no dispositivo.");
@@ -136,12 +184,140 @@ void addToMemoryHex2(Environment * env, uhex2_t hex) {
         WARN("A posicao de memoria \"%x\" vai ser sobrescrita, mas ha conteudo nela.\nIsso pode causar comportamentos inesperados.", env->programCounter);
 
     // Escreve o LSB
-    env->memory[env->programCounter] = hex & 0xFF;
+    env->memory[env->programCounter] = (memoryUnit_t) {
+        .value = hex & 0xFF,
+        .annotation = EMPTY_ANNOTATION
+    };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
 
     // Escreve o MSB
-    env->memory[env->programCounter] = hex >> 8;
+    env->memory[env->programCounter] = env->memory[env->programCounter] = (memoryUnit_t) {
+        .value = hex >> 8,
+        .annotation = EMPTY_ANNOTATION
+    };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
+}
+
+
+int getLabelFromAddress(Environment * env, uhex2_t address) {
+    // Procura o endereço
+    for (int i = 0; i < env->symbolCount; i++) {
+        if (env->symbolTable[i].address == address)
+            return i;
+    }
+
+    return -1;
+}
+
+int getLabelFromName(Environment * env, char * name) {
+    // Procura o endereço
+    for (int i = 0; i < env->symbolCount; i++) {
+        if (strcmp(env->symbolTable[i].name, name) == 0)
+            return i;
+    }
+
+    return -1;
+}
+
+void addLabel(Environment * env, char * name, uhex2_t address) {
+    if (!env->isFirstPass) return;
+    // Verifica se já não existe esse nome.
+    int i = getLabelFromName(env, name);
+    if (i != -1)
+        WARN("Instrucao %d: ja existe um rotulo com o nome \"%s\".\n\t O novo rotulo ira sobrescrever o antigo.", env->currentInstruction, name);
+
+    // Salva esse endereço na Tabela de Símbolos com o nome dado
+    label_t label = {
+        .name = name,
+        .address = address
+    };
+
+    // Se encontrou um com o mesmo nome, sobrescreve
+    if (i != -1) {
+        env->symbolTable[i] = label;
+        return;
+    }
+
+    // Se chegou até aqui, não encontrou um rótulo com o mesmo nome,
+    // então cria um novo
+    env->symbolCount++;
+    label_t * temp = realloc(env->symbolTable, sizeof(label_t) * env->symbolCount);
+    if (temp == NULL)
+        V_EXIT(EXIT_NO_MEMORY,"Nao ha memoria suficiente para salvar o rotulo \"%s\"", name);
+
+    temp[env->symbolCount - 1] = label;
+
+    env->symbolTable = temp; // salva o novo vetor
+}
+
+uhex2_t getAddressOfLabel(Environment * env, char * name) {
+    if (env->isFirstPass) {
+        return 0;
+    }
+
+    // Procura o rótulo
+    int label = getLabelFromName(env, name);
+    if (label == -1) // se não encontrou, dá erro
+        V_EXIT(EXIT_INVALID_ARGUMENT, "Instrucao %d: O rotulo \"%s\" nao existe. ", env->currentInstruction, name);
+
+    // Se chegou até aqui, encontrou, então retorna o endereço.
+    return env->symbolTable[label].address;
+}
+
+
+void addInstruction(Environment * env, uhex1_t opcode) {
+    addToMemoryHex1Annotation(env, opcode, (char*)getInstructionName(opcode));
+}
+
+void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value) {
+    addToMemoryHex1Annotation(env, opcode,
+        formatString("%s %x", (char*)getInstructionName(opcode), value)
+        );
+    addToMemoryHex1(env, value);
+}
+
+void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
+    if (opcode == OPCODE_JMP || opcode == OPCODE_JM || opcode == OPCODE_JNZ || opcode == OPCODE_JZ) {
+        int i = getLabelFromAddress(env, value);
+        if (i != -1) {
+            addToMemoryHex1Annotation(env, opcode,
+        formatString("%s %s\t\t(TESTE aponta para %xH)", (char*)getInstructionName(opcode), env->symbolTable[i].name, (uhex2_t)value)
+        );
+        } else {
+            addToMemoryHex1Annotation(env, opcode,
+        formatString("%s %x", (char*)getInstructionName(opcode), value)
+        );
+        }
+
+    } else {
+        addToMemoryHex1Annotation(env, opcode,
+        formatString("%s %xH", (char*)getInstructionName(opcode), value)
+        );
+    }
+
+    addToMemoryHex2(env, value);
+}
+
+void appendAnnotationToLastMemoryUnit(Environment * env, char * text) {
+    if (env->isFirstPass) return;
+    env->memory[env->programCounter-1].annotation = formatString("%s, %s",
+        env->memory[env->programCounter-1].annotation, text);
+}
+
+void setRegister(Environment * env, int reg, hex1_t value) {
+    // Redefine os flags
+    env->flags[FLAG_Z] = 0;
+    env->flags[FLAG_S] = 0;
+
+    hex1_t before = env->registers[reg];
+
+    env->registers[reg] = value;
+
+    // Se for negativo, ativa o flag de sinal
+    if (value < 0) env->flags[FLAG_S] = 1;
+
+    // Se for 0, ativa o flag de zerado
+    else if (value == 0) env->flags[FLAG_Z] = 1;
 }

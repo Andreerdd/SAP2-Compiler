@@ -1,18 +1,9 @@
-; Carrega os registradores
-MVI A, 1H
-MVI B, 2H
-MVI C, 3H
+MVI A, 9H
 
-; A+B
-ADD B ; A+B
+LOOP:
+DCR A
 OUT 0H
+JNZ LOOP
 
-; A+B+C
-ADD C ; A+B+C
+MVI A, FH
 OUT 0H
-
-OUT 0H
-
-
-; Finaliza o programa
-HLT

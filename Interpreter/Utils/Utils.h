@@ -11,8 +11,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../environment.h"
+
 // Para concatenar dois valores
 #define CAT2(a,b) a##b
+
+// Para transformar um valor uhex1 em string
+#define toStringUHex(xv) formatString("%xH", xv)
+
 
 /**
  * Adiciona o caractere dado ao fim da string. Se não conseguir
@@ -30,7 +36,7 @@ size_t addCharToString(char c, char** array, size_t size);
  * @param out endereço de onde vai se guardar o resultado (hex)
  * @return código de erro
  */
-errno_t str_to_hex1(const char* text, uint8_t* out);
+errno_t str_to_hex1(const char* text, hex1_t* out);
 
 /**
  * Converte um texto em um número hexadecimal com 8 bits
@@ -38,7 +44,7 @@ errno_t str_to_hex1(const char* text, uint8_t* out);
  * @param out endereço de onde vai se guardar o resultado (hex2)
  * @return código de erro
  */
-errno_t str_to_hex2(const char* text, uint16_t* out);
+errno_t str_to_hex2(const char* text, hex2_t* out);
 
 /**
  * Compara dois inteiros
@@ -47,4 +53,12 @@ errno_t str_to_hex2(const char* text, uint16_t* out);
  * @return se (a > b), retorna 1. Se (a < b), retorna -1. Se (a == b), retorna 0.
  */
 int comp_hex2(const void * a, const void * b);
+
+/**
+ * Formata um texto no estilo "printf"
+ * @param format string base
+ * @param ... outras strings
+ * @return string formatada
+ */
+char* formatString(const char* format, ...);
 #endif //SAP2_COMPILER_UTIL_H

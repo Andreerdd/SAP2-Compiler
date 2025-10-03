@@ -5,6 +5,7 @@
 //
 
 #include <stdint.h>
+#include <stdarg.h> // VA ARGS
 
 #include "Utils.h"
 #include "../ErrorCodes.h"
@@ -33,7 +34,7 @@ size_t addCharToString(char c, char** array, size_t size) {
     return size + 1;
 }
 
-errno_t str_to_hex1(const char* text, uhex1_t* out) {
+errno_t str_to_hex1(const char* text, hex1_t* out) {
     if (!text)
         return EXIT_NULL_ARGUMENT;
 
@@ -46,14 +47,14 @@ errno_t str_to_hex1(const char* text, uhex1_t* out) {
     buf[len-1] = '\0';
 
     char* endp = NULL;
-    unsigned long val = strtoul(buf, &endp, 16);
-    if (endp == buf || *endp != '\0' || val > UHEX1_MAX) return EXIT_INVALID_ARGUMENT;
+    unsigned long tmp = strtoul(buf, &endp, 16);
+    if (endp == buf || *endp != '\0' || tmp > MAX_INT_TO_HEX) return EXIT_INVALID_ARGUMENT;
+    *out = (hex1_t)(uint8_t)tmp;
 
-    *out = (uhex1_t)val;
     return EXIT_SUCCESS;
 }
 
-errno_t str_to_hex2(const char* text, uhex2_t* out) {
+errno_t str_to_hex2(const char* text, hex2_t* out) {
     if (!text)
         return EXIT_NULL_ARGUMENT;
 
@@ -67,14 +68,48 @@ errno_t str_to_hex2(const char* text, uhex2_t* out) {
 
     char* endp = NULL;
     unsigned long val = strtoul(buf, &endp, 16);
-    if (endp == buf || *endp != '\0' || val > UHEX2_MAX) return EXIT_INVALID_ARGUMENT;
+    if (endp == buf || *endp != '\0' || val > HEX2_MAX) return EXIT_INVALID_ARGUMENT;
 
-    *out = (uhex2_t)val;
+    *out = (hex2_t)val;
     return EXIT_SUCCESS;
 }
 
 int comp_hex2(const void * a, const void * b) {
-    uhex2_t xa = *(uhex2_t*)a;
-    uhex2_t xb = *(uhex2_t*)b;
+    hex2_t xa = *(hex2_t*)a;
+    hex2_t xb = *(hex2_t*)b;
     return (xa > xb) - (xa < xb);
+}
+
+char* formatString(const char* format, ...) {
+    char* string = NULL;
+    size_t size;
+
+    va_list vargs1;
+    va_start(vargs1, format);
+
+    // Cria uma cópia da lista de argumentos
+    va_list vargs2;
+    va_copy(vargs2, vargs1);
+
+    // Mede o tamanho necessario
+    size = vsnprintf(NULL, 0, format, vargs1);
+    va_end(vargs1);
+
+    if (size < 0) {
+        va_end(vargs2);
+        return NULL; // Erro de codificação no formato
+    }
+
+    // Aloca memória
+    string = malloc(sizeof(char) * (size + 1));
+    if (string == NULL) {
+        va_end(vargs2);
+        return NULL;
+    }
+    // Formata a string
+    vsnprintf(string, size + 1, format, vargs2);
+    va_end(vargs2);
+
+    // Retorna a string alocada
+    return string;
 }

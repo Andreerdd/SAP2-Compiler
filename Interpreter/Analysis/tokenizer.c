@@ -94,7 +94,8 @@ TokenType_t getTypeOfToken(char* text) {
     // usuário que o programa só aceita hexadecimal.
     if ( (qntdDigit == len) || (qntdDigit == len-1 && qntdDot == 1) ) {
         V_EXIT(EXIT_INVALID_ARGUMENT,
-            "O numero \"%s\" foi encontrado.\nNo entanto, apenas hexadecimais sao permitidos.", text);
+    "O numero \"%s\" foi encontrado.\nNo entanto, apenas hexadecimais sao permitidos.\nNesse programa, hexadecimais sao numeros inteiros\nque terminam com H, como 1234H.",
+    text);
     }
 
     // Se todos os caracteres menos um for um digito
@@ -157,7 +158,6 @@ Token_t buildToken(TokenType_t type, const char* value) {
     if (value != NULL) {
         copy = strdup(value);
         if (copy == NULL) {
-            // TODO: mensagem de limite de memória e lidar melhor com isso
             EXIT_ERR(EXIT_NO_MEMORY);
             /*return (Token_t) {
                 .type = TokenType_Unknown,
@@ -227,7 +227,7 @@ Token_t getNextToken(FILE* file) {
 
         // Se for uma vírgula, salva o texto já lido
         // e volta 1 caractere no arquivo
-        if (c == ',') {
+        if (c == ',' || c == ':') {
             if (text != NULL) {
                 // Volta 1 caractere
                 if (ungetc(c, file) == EOF) {
@@ -242,8 +242,9 @@ Token_t getNextToken(FILE* file) {
                 break;
             }
             // Se chegou até aqui (não tem texto para salvar),
-            // cria um token de vírgula
-            return buildToken(TokenType_Comma, ",");
+            // cria um token de vírgula/dois pontos
+            if (c == ',') return buildToken(TokenType_Comma, ",");
+            else return buildToken(TokenType_Colon, ":");
         }
 
         int alpha = isalpha(c); // se é um caractere do alfabeto
@@ -253,7 +254,6 @@ Token_t getNextToken(FILE* file) {
         if ( alpha || digit ) {
             textSize = addCharToString(c, &text, textSize);
             if (textSize == -1) {
-                // TODO: adicionar mensagem de limite de memória e lidar melhor
                 EXIT_ERR(EXIT_NO_MEMORY);
                 //return buildToken(TokenType_Unknown, NULL);
             }

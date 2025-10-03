@@ -32,17 +32,21 @@ do { EVAL_CALL0(fn); } while (0); break;
 #define EVAL_ENC__REG(fn, reg) \
 do { EVAL_CALL1(fn, (reg)); } while (0); break;
 
+// fn(env, reg, reg) — registrador já conhecido (constante/enum)
+#define EVAL_ENC__2REG(fn, r1, r2) \
+do { EVAL_CALL2(fn, (r1), (r2)); } while (0); break;
+
 // fn(env, reg, hex1) — consome 1 byte imediato
 #define EVAL_ENC__REG_HEX1(fn, reg) \
-do { uhex1_t x1 = EVAL_FETCH1(); EVAL_CALL2(fn, (reg), x1); } while (0); break;
+do { hex1_t x1 = EVAL_FETCH1(); EVAL_CALL2(fn, (reg), x1); } while (0); break;
 
 // fn(env, hex1) — consome 1 byte imediato
 #define EVAL_ENC__HEX1(fn) \
-do { uhex1_t x1 = EVAL_FETCH1(); EVAL_CALL1(fn, x1); } while (0); break;
+do { hex1_t x1 = EVAL_FETCH1(); EVAL_CALL1(fn, x1); } while (0); break;
 
 // fn(env, hex2) — consome 2 bytes imediato (LSB/MSB)
 #define EVAL_ENC__HEX2(fn) \
-do { uhex2_t x2 = EVAL_FETCH2(); EVAL_CALL1(fn, x2); } while (0); break;
+do { hex2_t x2 = EVAL_FETCH2(); EVAL_CALL1(fn, x2); } while (0); break;
 
 #define test(o, l) \
 case o: l;
@@ -53,8 +57,17 @@ case o: l;
  * @param env o ambiente do SAP2
  * @return o hexadecimal que leu
  */
-uhex1_t consume_hex1(Environment * env) {
-    return env->memory[env->programCounter++];
+hex1_t consume_hex1(Environment * env) {
+    return env->memory[env->programCounter++].value;
+}
+
+/**
+ * Consome o próximo valor de memória como uma instrução (unsigned hex)
+ * @param env o ambiente do SAP2
+ * @return o hexadecimal que leu
+ */
+uhex1_t consume_instruction(Environment * env) {
+    return env->memory[env->programCounter++].value;
 }
 
 /**
@@ -64,21 +77,35 @@ uhex1_t consume_hex1(Environment * env) {
  * @param env o ambiente do SAP2
  * @return o hexadecimal formado pelos dois valores
  */
-uhex2_t consume_hex2(Environment * env) {
-    uhex1_t lsb = consume_hex1(env);
-    uhex1_t msb = consume_hex1(env);
-    return (msb << 8) | lsb;
+hex2_t consume_hex2(Environment * env) {
+    hex1_t lsb = consume_hex1(env);
+    hex1_t msb = consume_hex1(env);
+    return (hex2_t)((msb << 8) | (lsb & 0xFF));
+
 }
 
 
 
 ErrorCode_t execute_instruction(Environment * env) {
-    uhex2_t opcode = consume_hex1(env);
+    uhex1_t opcode = consume_hex1(env);
 
     switch (opcode) {
         // ADD
         case OPCODE_ADD_B: EVAL_ENC__REG(execute_add, REGISTER_B)
         case OPCODE_ADD_C: EVAL_ENC__REG(execute_add, REGISTER_C)
+
+        // ANA
+        case OPCODE_ANA_B: EVAL_ENC__REG(execute_ana, REGISTER_B)
+        case OPCODE_ANA_C: EVAL_ENC__REG(execute_ana, REGISTER_C)
+
+        // ANI
+        case OPCODE_ANI:   EVAL_ENC__HEX1(execute_ani)
+
+        // CALL
+        case OPCODE_CALL:  EVAL_ENC__HEX2(execute_jmp) // se você implementar pilha/retorno, troque para execute_call
+
+        // CMA
+        case OPCODE_CMA:   EVAL_ENC__NONE(execute_cma)
 
         // DCR
         case OPCODE_DCR_A: EVAL_ENC__REG(execute_dcr, ACCUMULATOR);
@@ -87,24 +114,68 @@ ErrorCode_t execute_instruction(Environment * env) {
 
         // HLT
         case OPCODE_HLT: {
-            EVAL_ENC__NONE(execute_hlt)
-            return EXIT_HLT; // não precisa
+            return execute_hlt(env);
         }
+
+        // INR
+        case OPCODE_INR_A: EVAL_ENC__REG(execute_inr, ACCUMULATOR)
+        case OPCODE_INR_B: EVAL_ENC__REG(execute_inr, REGISTER_B)
+        case OPCODE_INR_C: EVAL_ENC__REG(execute_inr, REGISTER_C)
+
+        // JMP/JM/JNZ/JZ
+        case OPCODE_JMP: EVAL_ENC__HEX2(execute_jmp)
+        case OPCODE_JM:  EVAL_ENC__HEX2(execute_jm)
+        case OPCODE_JNZ: EVAL_ENC__HEX2(execute_jnz)
+        case OPCODE_JZ:  EVAL_ENC__HEX2(execute_jz)
+
+        // LDA
+        case OPCODE_LDA: EVAL_ENC__HEX2(execute_lda)
+
+        // MOV
+        case OPCODE_MOV_A_B: EVAL_ENC__2REG(execute_mov, ACCUMULATOR, REGISTER_B)
+        case OPCODE_MOV_A_C: EVAL_ENC__2REG(execute_mov, ACCUMULATOR, REGISTER_C)
+        case OPCODE_MOV_B_A: EVAL_ENC__2REG(execute_mov, REGISTER_B, ACCUMULATOR)
+        case OPCODE_MOV_B_C: EVAL_ENC__2REG(execute_mov, REGISTER_B, REGISTER_C)
+        case OPCODE_MOV_C_A: EVAL_ENC__2REG(execute_mov, REGISTER_C, ACCUMULATOR)
+        case OPCODE_MOV_C_B: EVAL_ENC__2REG(execute_mov, REGISTER_C, REGISTER_B)
 
         // MVI
         case OPCODE_MVI_A: EVAL_ENC__REG_HEX1(execute_mvi, ACCUMULATOR)
         case OPCODE_MVI_B: EVAL_ENC__REG_HEX1(execute_mvi, REGISTER_B)
         case OPCODE_MVI_C: EVAL_ENC__REG_HEX1(execute_mvi, REGISTER_C)
 
+        // NOP
+        case OPCODE_NOP: EVAL_ENC__NONE(execute_nop)
+
+        // ORA/ORI
+        case OPCODE_ORA_B: EVAL_ENC__REG(execute_ora, REGISTER_B)
+        case OPCODE_ORA_C: EVAL_ENC__REG(execute_ora, REGISTER_C)
+        case OPCODE_ORI:   EVAL_ENC__HEX1(execute_ori)
+
         // OUT
         case OPCODE_OUT: EVAL_ENC__HEX2(execute_out)
+
+        // RAL/RAR
+        case OPCODE_RAL: EVAL_ENC__NONE(execute_ral)
+        case OPCODE_RAR: EVAL_ENC__NONE(execute_rar)
+
+        // RET
+        case OPCODE_RET: EVAL_ENC__NONE(execute_ret)
+
+        // STA
+        case OPCODE_STA: EVAL_ENC__HEX2(execute_sta)
 
         // SUB
         case OPCODE_SUB_B: EVAL_ENC__REG(execute_sub, REGISTER_B)
         case OPCODE_SUB_C: EVAL_ENC__REG(execute_sub, REGISTER_C)
 
+        // XRA/XRI
+        case OPCODE_XRA_B: EVAL_ENC__REG(execute_xra, REGISTER_B)
+        case OPCODE_XRA_C: EVAL_ENC__REG(execute_xra, REGISTER_C)
+        case OPCODE_XRI:   EVAL_ENC__HEX1(execute_xri)
+
         default: {
-            WARN("Instrucao %d: Codigo de Operacao \"%x\" desconhecido", env->currentInstruction, opcode);
+            fprintf(stderr,"Instrucao %d: Codigo de Operacao \"%x\" desconhecido", env->currentInstruction, opcode);
             return EXIT_INVALID_INSTRUCTION;
         }
     }
@@ -118,7 +189,12 @@ ErrorCode_t evaluate(Environment * env) {
     ErrorCode_t err;
     while (env->programCounter < MEMORY_SIZE) {
         err = execute_instruction(env);
-        if (err != EXIT_SUCCESS) return err;
+        if (err != EXIT_SUCCESS) {
+            if (err == EXIT_HLT) // nesse caso, HLT é SUCESSO
+                return EXIT_SUCCESS;
+
+            return err;
+        }
     }
     return EXIT_SUCCESS;
 }

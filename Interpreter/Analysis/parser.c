@@ -22,22 +22,24 @@
 // O ambiente do estado atual do parser
 #define stenv (state->env)
 
+// TODO: avisar que o hexadecimal é de um byte (hex1) ou de dois bytes (hex2) na mensagem de erro
+
 // Verifica se o valor v é um hexadecimal dentro dos limites de "s" hexadecimais (4*s bits).
 #define check_hex(name, s, v) \
-    uhex##s##_t name;                                                                       \
+    hex##s##_t name;                                                                       \
     if (CAT2(str_to_hex, s)(v->value, &name) != EXIT_SUCCESS)                                     \
         VI_EXIT(EXIT_INVALID_ARGUMENT, "Argumento hexadecimal invalido \"%s\" (%s)\n",      \
         v ? v->value : "null",                                                              \
         v ? getTokenTypeString(v->type) : getTokenTypeString(TokenType_Unknown));           \
-    if (name > UHEX##s##_MAX)                                                               \
+    if (name > HEX##s##_MAX)                                                               \
         VI_EXIT(EXIT_INVALID_ARGUMENT, "Valor hexadecimal muito grande: %x\n", name);
 
 // Adiciona à memória a respectiva instrução "inst" em função do registrador "ri"
 #define addInstructionAllReg(inst, ri) \
     do {    \
-        if (ri == ACCUMULATOR) addToMemoryHex1(stenv, inst##_A); \
-        else if (ri == REGISTER_B) addToMemoryHex1(stenv, inst##_B); \
-        else if (ri == REGISTER_C) addToMemoryHex1(stenv, inst##_C); \
+        if (ri == ACCUMULATOR) addInstruction(stenv, inst##_A); \
+        else if (ri == REGISTER_B) addInstruction(stenv, inst##_B); \
+        else if (ri == REGISTER_C) addInstruction(stenv, inst##_C); \
     } while (0);
 
 #define parsei(name) \
@@ -82,11 +84,27 @@ void consume(ParserState* state) {
 Token_t* expect_and_consume(ParserState* state, TokenType_t expected_type) {
     Token_t* token = peek(state);
     if (token == NULL || token->type != expected_type) {
+        Token_t last_token;
+        state->index--;
+        do {
+            last_token = state->tokens[state->index];
+            if (state->index == 0) {
+                // Avisa o erro e sai do programa
+                VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe: esperado %s, encontrado \"%s\" (%s)\n",
+                getTokenTypeString(expected_type),
+                token ? token->value : "null",
+                token ? getTokenTypeString(token->type) : getTokenTypeString(TokenType_Unknown));
+            }
+            state->index--;
+        } while (last_token.type != TokenType_Identifier && last_token.type != TokenType_Instruction);
+
         // Avisa o erro e sai do programa
-        VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe: esperado %s, encontrado \"%s\" (%s)\n",
-            getTokenTypeString(expected_type),
-            token ? token->value : "null",
-            token ? getTokenTypeString(token->type) : getTokenTypeString(TokenType_Unknown));
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe depois de \"%s\": esperado %s, encontrado \"%s\" (%s)\n",
+        last_token.value,
+        getTokenTypeString(expected_type),
+        token ? token->value : "null",
+        token ? getTokenTypeString(token->type) : getTokenTypeString(TokenType_Unknown));
+
 
         return NULL;
     }
@@ -133,8 +151,8 @@ int consume_hex(ParserState * state, unsigned int size) {
 parsei(ADD) {
     int ri = consume_reg(state);
 
-    if (ri == REGISTER_B) addToMemoryHex1(stenv, OPCODE_ADD_B);
-    else if (ri == REGISTER_C) addToMemoryHex1(stenv, OPCODE_ADD_C);
+    if (ri == REGISTER_B) addInstruction(stenv, OPCODE_ADD_B);
+    else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_ADD_C);
 }
 
 parsei(DCR) {
@@ -144,14 +162,114 @@ parsei(DCR) {
 }
 
 parsei(HLT) {
+    /* Vou melhorar isso depois :D
+
     // Antes de sair, verifica se tem coisa depois
     Token_t * t_end = peek(state);
 
     if (t_end != NULL && t_end->type != TokenType_EOF) {
         I_WARN("%s", "Coisas depois do HLT foram descartadas.");
     }
+    */
+    addInstruction(stenv, OPCODE_HLT);
+}
 
-    addToMemoryHex1(stenv, OPCODE_HLT);
+parsei(JMP) {
+    Token_t * t_address = peek(state);
+    hex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_JMP, address);
+}
+
+parsei(JM) {
+    Token_t * t_address = peek(state);
+    hex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_JM, address);
+}
+
+parsei(JNZ) {
+    Token_t * t_address = peek(state);
+    hex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_JNZ, address);
+}
+
+parsei(JZ) {
+    Token_t * t_address = peek(state);
+    hex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_JZ, address);
+}
+
+parsei(MOV) {
+    #define opc_mov(x, y) case REGISTER_##y: addInstruction(stenv, OPCODE_MOV_##x##_##y); break;
+
+    int ri = consume_reg(state);
+    expect_and_consume(state, TokenType_Comma);
+    int rj = consume_reg(state);
+
+    switch (ri) {
+        case ACCUMULATOR:
+            switch (rj) {
+                opc_mov(A, B)
+                opc_mov(A, C)
+                default: {}
+            }
+        case REGISTER_B:
+            switch (rj) {
+                opc_mov(B, A)
+                opc_mov(B, C)
+                default: {}
+            }
+        case REGISTER_C:
+            switch (rj) {
+                opc_mov(C, A)
+                opc_mov(C, B)
+                default: {}
+            }
+            default: {}
+    }
 }
 
 parsei(MVI) {
@@ -159,25 +277,26 @@ parsei(MVI) {
 
     expect_and_consume(state, TokenType_Comma);
 
-    uhex1_t xv = consume_hex(state, 1);
+    hex1_t xv = consume_hex(state, 1);
 
     addInstructionAllReg(OPCODE_MVI, ri);
+    appendAnnotationToLastMemoryUnit(stenv, toStringUHex(xv));
     addToMemoryHex1(state->env, xv);
 }
 
 parsei(OUT) {
-    uhex2_t xv = consume_hex(state, 2);
+    hex2_t xv = consume_hex(state, 2);
 
-    addToMemoryHex1(stenv, OPCODE_OUT);
-    addToMemoryHex2(stenv, xv);
+    addInstructionWithHex2(stenv, OPCODE_OUT, xv);
 }
 
 parsei(SUB) {
     int ri = consume_reg(state);
 
-    if (ri == REGISTER_B) addToMemoryHex1(stenv, OPCODE_SUB_B);
-    else if (ri == REGISTER_C) addToMemoryHex1(stenv, OPCODE_SUB_C);
+    if (ri == REGISTER_B) addInstruction(stenv, OPCODE_SUB_B);
+    else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_SUB_C);
 }
+
 
 
 // analisa uma instrução
@@ -189,6 +308,11 @@ void parse_instruction(ParserState * state) {
     }
     PARSE_IF_INSTRUCTION(ADD)
     PARSE_IF_INSTRUCTION(DCR)
+    PARSE_IF_INSTRUCTION(JMP)
+    PARSE_IF_INSTRUCTION(JM)
+    PARSE_IF_INSTRUCTION(JNZ)
+    PARSE_IF_INSTRUCTION(JZ)
+    PARSE_IF_INSTRUCTION(MOV)
     PARSE_IF_INSTRUCTION(MVI)
     PARSE_IF_INSTRUCTION(OUT)
     PARSE_IF_INSTRUCTION(SUB)
@@ -196,16 +320,33 @@ void parse_instruction(ParserState * state) {
     state->env->currentInstruction++;
 }
 
+// analisa um identificador
+void parse_identifier(ParserState * state) {
+    Token_t * identifier_token = expect_and_consume(state, TokenType_Identifier);
+    char* lname = (char*) strdup(identifier_token->value);
+    if (lname == NULL) VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "O rotulo eh invalido");
+
+    (void) expect_and_consume(state, TokenType_Colon);
+
+    // Salva esse endereço na Tabela de Símbolos com o nome dado
+    addLabel(state->env, lname, state->env->programCounter);
+}
+
 // analisa o trecho de tokens atual
 bool parse_statement(ParserState * state) {
     Token_t * token = peek(state);
     if (token == NULL) return false;
+
     switch (token->type) {
         case TokenType_Instruction: {
             parse_instruction(state);
             return false;
         }
         case TokenType_EOF: return true;
+        case TokenType_Identifier: {
+            parse_identifier(state);
+            return false;
+        }
 
         default: VI_EXIT(EXIT_INVALID_INSTRUCTION, "Nao foi possivel analisar o trecho: %s", token->value);
     }
@@ -219,9 +360,21 @@ void parse(Token_t * tokens, size_t size, Environment * env) {
         .index = 0
     };
 
+    env->isFirstPass = true;
+    while (state.index < state.size) {
+        if (parse_statement(&state)) {
+            break;
+        };
+    }
+
+    env->isFirstPass = false;
+    state.index = 0;
+    env->programCounter = STARTER_MEMORY_ADDRESS;
+    env->currentInstruction = 0;
     while (state.index < state.size) {
         if (parse_statement(&state)) {
             return;
         };
     }
+
 }
