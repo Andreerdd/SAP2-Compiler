@@ -273,27 +273,31 @@ void addInstruction(Environment * env, uhex1_t opcode) {
 
 void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value) {
     addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %x", (char*)getInstructionName(opcode), value)
+        formatString("%s %2x", (char*)getInstructionName(opcode), value)
         );
     addToMemoryHex1(env, value);
 }
 
 void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
-    if (opcode == OPCODE_JMP || opcode == OPCODE_JM || opcode == OPCODE_JNZ || opcode == OPCODE_JZ) {
+    if (opcode == OPCODE_JMP || opcode == OPCODE_JM || opcode == OPCODE_JNZ || opcode == OPCODE_JZ || opcode == OPCODE_CALL) {
         int i = getLabelFromAddress(env, value);
         if (i != -1) {
             addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %s\t\t(TESTE aponta para %xH)", (char*)getInstructionName(opcode), env->symbolTable[i].name, (uhex2_t)value)
+        formatString("%s %s\t\t(%s aponta para %2xH)",
+            (char*)getInstructionName(opcode),
+            env->symbolTable[i].name,
+            env->symbolTable[i].name,
+            (uhex2_t)value)
         );
         } else {
             addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %x", (char*)getInstructionName(opcode), value)
+        formatString("%s %2x", (char*)getInstructionName(opcode), value)
         );
         }
 
     } else {
         addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %xH", (char*)getInstructionName(opcode), value)
+        formatString("%s %2xH", (char*)getInstructionName(opcode), value)
         );
     }
 
@@ -307,17 +311,42 @@ void appendAnnotationToLastMemoryUnit(Environment * env, char * text) {
 }
 
 void setRegister(Environment * env, int reg, hex1_t value) {
-    // Redefine os flags
-    env->flags[FLAG_Z] = 0;
-    env->flags[FLAG_S] = 0;
-
-    hex1_t before = env->registers[reg];
-
+    // Altera o valor do registrador
     env->registers[reg] = value;
 
-    // Se for negativo, ativa o flag de sinal
-    if (value < 0) env->flags[FLAG_S] = 1;
+    // Atualiza os flags. Teoricamente, os flags só seriam atualizados
+    // se fosse o acumulador que tivesse alterado. No entanto, não achei
+    // nenhum lugar que confirmasse isso e os próprios códigos
+    // disponibilizados dependem que os flags alterem na mudança de qualquer
+    // registrador.
 
-    // Se for 0, ativa o flag de zerado
-    else if (value == 0) env->flags[FLAG_Z] = 1;
+ //   if (reg == ACCUMULATOR) {
+        // Redefine os flags
+        env->flags[FLAG_Z] = 0;
+        env->flags[FLAG_S] = 0;
+
+        // Se for negativo, ativa o flag de sinal
+        if (value < 0) env->flags[FLAG_S] = 1;
+
+        // Se for 0, ativa o flag de zerado
+        else if (value == 0) env->flags[FLAG_Z] = 1;
+ //   }
+}
+
+void setMemory(Environment * env, uhex2_t address, hex1_t value) {
+    env->memory[address].value = value;
+    env->memory[address].annotation = NULL;
+}
+
+void setMemoryHex2(Environment * env, uhex2_t address, hex2_t value) {
+    hex1_t lsb = (hex1_t) value & 0xFF;
+    hex1_t msb = (hex1_t) (value >> 8) & 0xFF;
+
+    setMemory(env, address, lsb);
+    setMemory(env, address+1, msb);
+}
+
+void setMemoryWithAnnotation(Environment * env, uhex2_t address, hex1_t value, const char * annotation) {
+    env->memory[address].value = value;
+    env->memory[address].annotation = strdup(annotation);
 }

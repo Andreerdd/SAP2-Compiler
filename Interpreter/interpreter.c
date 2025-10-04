@@ -76,7 +76,7 @@ ErrorCode_t interpret(FILE * file) {
 
     // Avalia(executa) o código
     ErrorCode_t exit_code = evaluate(&env);
-    WARN("\nSaida de Erro: %d\n", exit_code);
+    WARN("Saida de Erro: %d\n", exit_code);
 
 
     // Fim do código //

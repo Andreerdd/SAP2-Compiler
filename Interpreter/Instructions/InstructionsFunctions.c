@@ -48,7 +48,7 @@ ex_fn(execute_hlt) {
     // precisaria de ter o OPCODE do HLT na memória (portanto, algum
     // endereço da memória foi usado).
     if (env->usedAddressesSize > 0 && SHOW_MEMORY_ON_HLT) {
-        printf("\nMemoria RAM ================================\nEndereco\t|  Conteudo\t|  Simbolico\n");
+        printf("\nMemoria RAM ================================\nEndereco\t| Conteudo\t| Simbolico\n");
 
         qsort(env->usedAddresses, env->usedAddressesSize, sizeof(hex2_t), comp_hex2);
 
@@ -56,7 +56,7 @@ ex_fn(execute_hlt) {
             char* annotation = env_memory(env->usedAddresses[i]).annotation;
             if (annotation != NULL) {
                 // é instrução
-                printf("%xH\t\t|  %xH \t\t|  %s\n",
+                printf("%xH\t\t| %02xH \t\t| %s\n",
                 env->usedAddresses[i],
                 // Se for instrução, o valor guardado deverá ser lido como
                 // unsigned hex.
@@ -64,10 +64,10 @@ ex_fn(execute_hlt) {
                 env_memory(env->usedAddresses[i]).annotation);
 
             } else {
-                printf("%xH\t\t|  %xH \t\t|  %s\n",
+                printf("%xH\t\t| %02xH \t\t| %s\n",
                 env->usedAddresses[i],
                 // Se não for instrução, deverá ser lido como signed hex.
-                env_memval(env->usedAddresses[i]),
+                (hex1_t)env_memval(env->usedAddresses[i]),
                 env_memory(env->usedAddresses[i]).annotation);
             }
         }
@@ -78,6 +78,26 @@ ex_fn(execute_hlt) {
 }
 
 ex_fn_hex2(execute_jmp) {
+    env->programCounter = value;
+    return EXIT_SUCCESS;
+}
+
+ex_fn_hex2(execute_call) {
+    // Verifica se já tem coisa escrita
+
+    if (env_memval(RET_ADDRESS_LSB) != 0 || env_memval(RET_ADDRESS_MSB) != 0) {
+        WARN(
+"Instrucao %d: A instrucao \"CALL\" foi chamada durante uma subrotina.\nPor causa disso, o endereco de memoria para retornar (RET) foi sobrescrito.\nIsso nao eh recomendado, uma vez que seu programa pode \"se perder\".",
+            env->currentInstruction);
+    }
+
+    hex1_t lsb = (hex1_t) env->programCounter & 0xFF;
+    hex1_t msb = (hex1_t) (env->programCounter >> 8) & 0xFF;
+
+    // eu poderia só fazer: setMemoryHex2(env, RET_ADDRESS_LSB, env->programCounter);
+    setMemory(env, RET_ADDRESS_LSB, lsb);
+    setMemory(env, RET_ADDRESS_MSB, msb);
+
     env->programCounter = value;
     return EXIT_SUCCESS;
 }
@@ -177,7 +197,9 @@ ErrorCode_t execute_ori(Environment* env, hex1_t value) {
 
 // RAL: A = (A << 1), LSB := 0 (simples)
 ex_fn(execute_ral) {
-    SET_ACC((hex1_t)((REG_A << 1) & 0xFE));
+    uhex1_t msb = (REG_A & 0x80) >> 7; // pega o bit 7 e coloca na posição 0
+    uhex1_t result = ((REG_A << 1) | msb) & 0xFF;
+    SET_ACC((hex1_t)result);
     return EXIT_SUCCESS;
 }
 
@@ -186,7 +208,7 @@ ex_fn(execute_rar) {
     hex1_t msb = (REG_A & 0x80) ? 1 : 0;
     //REG_A = (hex1_t)((REG_A >> 1) | (msb ? 0x80 : 0x00)); // descrição diz MSB vai para LSB
     // Exatamente "MSB vai para LSB":
-     REG_A = (hex1_t)((REG_A & 0x7F) | (msb ? 0x01 : 0x00));
+    SET_ACC(REG_A >> 1);
     return EXIT_SUCCESS;
 }
 
@@ -195,9 +217,19 @@ ex_fn(execute_ret) {
     hex1_t lsb = env_memval(RET_ADDRESS_LSB);
     hex1_t msb = env_memval(RET_ADDRESS_MSB);
 
+    // É seguro ver se ambos são 0 para ver se
+    // aponta para um lugar.
+    if (lsb == 0 && msb == 0) {
+        WARN(
+"Instrucao %d: a instrucao RET foi chamada mesmo nao havendo\nnada salvo nos enderecos de memoria de retorno.", env->currentInstruction);
+    }
+
     env->programCounter = (uhex2_t)(((msb & 0xFF) << 8) | (lsb & 0xFF));
 
-    // Se seu retorno é 2 bytes, ajuste para ler dois bytes (LSB/MSB).
+    // Esvazia os endereços de retorno (para fins de debug)
+    setMemory(env, RET_ADDRESS_MSB, 0);
+    setMemory(env, RET_ADDRESS_LSB, 0);
+
     return EXIT_SUCCESS;
 }
 

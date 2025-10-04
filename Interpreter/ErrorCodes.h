@@ -73,14 +73,15 @@ typedef enum {
 
 // Imprime uma mensagem de aviso ao usuário //
 #define WARN(format, ...) do {              \
-    fprintf(stderr, format, __VA_ARGS__);   \
-    fprintf(stderr, "\n");                  \
+    fprintf(stdout, "\n[AVISO] ");   \
+    fprintf(stdout, format, __VA_ARGS__);   \
+    fprintf(stdout, "\n");                  \
     } while(0)
 // Mostra em que instrução está
 #define I_WARN(format, ...) {                                                           \
-    fprintf(stderr, "[AVISO] Instrucao %d:\n\t", state->env->currentInstruction);       \
-    fprintf(stderr, format, __VA_ARGS__);                                               \
-    fprintf(stderr, "\n");                                                              \
+    fprintf(stdout, "[AVISO] Instrucao %d:\n\t", state->env->currentInstruction);       \
+    fprintf(stdout, format, __VA_ARGS__);                                               \
+    fprintf(stdout, "\n");                                                              \
 } while (0)
 
 

@@ -50,6 +50,7 @@ ex_fn_reg(execute_sub);
 
 ex_fn_reg(execute_ana);
 ex_fn_val(execute_ani);
+ex_fn_hex2(execute_call);
 ex_fn(execute_cma);
 ex_fn_reg(execute_inr);
 ex_fn_hex2(execute_jm);

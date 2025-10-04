@@ -13,40 +13,40 @@
 
 // Chamada genérica sem operandos
 #define EVAL_CALL0(fn) \
-do { fn(env); } while (0); break;
+fn(env);
 
 // Chamada genérica com 1 operando já disponível
 #define EVAL_CALL1(fn, a1) \
-do { fn(env, (a1)); } while (0); break;
+fn(env, (a1));
 
 // Chamada genérica com 2 operandos já disponíveis
 #define EVAL_CALL2(fn, a1, a2) \
-do { fn(env, (a1), (a2)); } while (0); break;
+fn(env, (a1), (a2));
 
 // Padrões de decodificação comuns:
 // fn(env) — sem operandos
 #define EVAL_ENC__NONE(fn) \
-do { EVAL_CALL0(fn); } while (0); break;
+{ EVAL_CALL0(fn);  break; }
 
 // fn(env, reg) — registrador já conhecido (constante/enum)
 #define EVAL_ENC__REG(fn, reg) \
-do { EVAL_CALL1(fn, (reg)); } while (0); break;
+{ EVAL_CALL1(fn, (reg));  break; }
 
 // fn(env, reg, reg) — registrador já conhecido (constante/enum)
 #define EVAL_ENC__2REG(fn, r1, r2) \
-do { EVAL_CALL2(fn, (r1), (r2)); } while (0); break;
+{ EVAL_CALL2(fn, (r1), (r2));  break; }
 
 // fn(env, reg, hex1) — consome 1 byte imediato
 #define EVAL_ENC__REG_HEX1(fn, reg) \
-do { hex1_t x1 = EVAL_FETCH1(); EVAL_CALL2(fn, (reg), x1); } while (0); break;
+{ hex1_t x1 = EVAL_FETCH1(); EVAL_CALL2(fn, (reg), x1);  break; }
 
 // fn(env, hex1) — consome 1 byte imediato
 #define EVAL_ENC__HEX1(fn) \
-do { hex1_t x1 = EVAL_FETCH1(); EVAL_CALL1(fn, x1); } while (0); break;
+{ hex1_t x1 = EVAL_FETCH1(); EVAL_CALL1(fn, x1); break; }
 
 // fn(env, hex2) — consome 2 bytes imediato (LSB/MSB)
 #define EVAL_ENC__HEX2(fn) \
-do { hex2_t x2 = EVAL_FETCH2(); EVAL_CALL1(fn, x2); } while (0); break;
+{ hex2_t x2 = EVAL_FETCH2(); EVAL_CALL1(fn, x2); break; }
 
 #define test(o, l) \
 case o: l;
@@ -81,7 +81,6 @@ hex2_t consume_hex2(Environment * env) {
     hex1_t lsb = consume_hex1(env);
     hex1_t msb = consume_hex1(env);
     return (hex2_t)((msb << 8) | (lsb & 0xFF));
-
 }
 
 
@@ -102,7 +101,7 @@ ErrorCode_t execute_instruction(Environment * env) {
         case OPCODE_ANI:   EVAL_ENC__HEX1(execute_ani)
 
         // CALL
-        case OPCODE_CALL:  EVAL_ENC__HEX2(execute_jmp) // se você implementar pilha/retorno, troque para execute_call
+        case OPCODE_CALL:  EVAL_ENC__HEX2(execute_call)
 
         // CMA
         case OPCODE_CMA:   EVAL_ENC__NONE(execute_cma)

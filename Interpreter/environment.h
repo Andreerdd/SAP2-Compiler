@@ -17,12 +17,15 @@
 #define FLAG_S 0
 #define FLAG_Z 1
 
-// Endereços que guardarão o endereço onde RET direcionará
-#define RET_ADDRESS_LSB 0x0001
-#define RET_ADDRESS_MSB 0x0002
-
 #define MEMORY_SIZE UINT16_MAX // 65535 (que é 2 hexadecimais, 0xFFFF)
 #define STARTER_MEMORY_ADDRESS 0x8000 // entre 0000H e 07FFH, está o programa monitor
+
+// Endereços que guardarão o endereço onde RET direcionará.
+// No SAP2, esses endereços são os 2 últimos da memória. Aqui,
+// preferi que eles fossem os 2 últimos da parte da memória
+// que o SAP armazena apenas para ele.
+#define RET_ADDRESS_LSB (STARTER_MEMORY_ADDRESS - 2)
+#define RET_ADDRESS_MSB (STARTER_MEMORY_ADDRESS - 1)
 
 #define HEX1_MAX INT8_MAX
 #define HEX1_MIN INT8_MIN
@@ -162,10 +165,37 @@ void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value);
 void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value);
 
 /**
- * Define o registrador dado com o valor dado.
+ * Define o registrador dado com o valor dado e, se for o
+ * acumulador, atualiza os flags.
  * @param env o ambiente do SAP2
  * @param reg o registrador que se quer definir o valor
  * @param value o novo valor do registrador
  */
 void setRegister(Environment * env, int reg, hex1_t value);
+
+/**
+ * Guarda o valor dado no endereço de memória dado.
+ * @param env o ambiente do SAP2
+ * @param address o endereço de memória que se quer guardar o valor
+ * @param value o valor que se quer guardar
+ */
+void setMemory(Environment * env, uhex2_t address, hex1_t value);
+
+/**
+ * Guarda o valor dado no endereço da memória dado (para o LSB) e no
+ * seguinte (para o MSB)
+ * @param env o ambiente do SAP2
+ * @param address o endereço de memória que se quer guardar o valor
+ * @param value o valor que se quer guardar
+ */
+void setMemoryHex2(Environment * env, uhex2_t address, hex2_t value);
+
+/**
+ * Guarda o valor dado no endereço de memória dado e com a anotação dada.
+ * @param env o ambiente do SAP2
+ * @param address o endereço de memória que se quer guardar o valor
+ * @param value o valor que se quer guardar
+ * @param annotation a anotação que se quer fazer naquele endereço.
+ */
+void setMemoryWithAnnotation(Environment * env, uhex2_t address, hex1_t value, const char * annotation);
 #endif //SAP2_COMPILER_ENVIRONMENT_H

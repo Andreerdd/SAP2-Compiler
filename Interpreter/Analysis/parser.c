@@ -135,7 +135,7 @@ int consume_reg(ParserState * state) {
  * @param size quantos hexadecimais (0xFF) deve consumir
  * @return o hexadecimal
  */
-int consume_hex(ParserState * state, unsigned int size) {
+hex2_t consume_hex(ParserState * state, unsigned int size) {
     Token_t * temp = expect_and_consume(state, TokenType_Hexadecimal);
 
     if (size == 1) {
@@ -153,6 +153,31 @@ parsei(ADD) {
 
     if (ri == REGISTER_B) addInstruction(stenv, OPCODE_ADD_B);
     else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_ADD_C);
+}
+
+parsei(CALL) {
+    Token_t * t_address = peek(state);
+    uhex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_CALL, address);
+}
+
+parsei(RET) {
+    addInstruction(stenv, OPCODE_RET);
+}
+
+parsei(NOP) {
+    addInstruction(stenv, OPCODE_NOP);
 }
 
 parsei(DCR) {
@@ -176,7 +201,7 @@ parsei(HLT) {
 
 parsei(JMP) {
     Token_t * t_address = peek(state);
-    hex2_t address;
+    uhex2_t address;
     if (t_address == NULL)
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
 
@@ -193,7 +218,7 @@ parsei(JMP) {
 
 parsei(JM) {
     Token_t * t_address = peek(state);
-    hex2_t address;
+    uhex2_t address;
     if (t_address == NULL)
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
 
@@ -210,7 +235,7 @@ parsei(JM) {
 
 parsei(JNZ) {
     Token_t * t_address = peek(state);
-    hex2_t address;
+    uhex2_t address;
     if (t_address == NULL)
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
 
@@ -227,7 +252,7 @@ parsei(JNZ) {
 
 parsei(JZ) {
     Token_t * t_address = peek(state);
-    hex2_t address;
+    uhex2_t address;
     if (t_address == NULL)
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
 
@@ -243,32 +268,35 @@ parsei(JZ) {
 }
 
 parsei(MOV) {
-    #define opc_mov(x, y) case REGISTER_##y: addInstruction(stenv, OPCODE_MOV_##x##_##y); break;
+    #define opc_mov(x, y) case REGISTER_##y: {addInstruction(stenv, OPCODE_MOV_##x##_##y); break;}
 
     int ri = consume_reg(state);
     expect_and_consume(state, TokenType_Comma);
     int rj = consume_reg(state);
 
     switch (ri) {
-        case ACCUMULATOR:
-            switch (rj) {
-                opc_mov(A, B)
-                opc_mov(A, C)
-                default: {}
-            }
-        case REGISTER_B:
-            switch (rj) {
-                opc_mov(B, A)
-                opc_mov(B, C)
-                default: {}
-            }
-        case REGISTER_C:
-            switch (rj) {
-                opc_mov(C, A)
-                opc_mov(C, B)
-                default: {}
-            }
+    case ACCUMULATOR:
+        switch (rj) {
+            opc_mov(A, B)
+            opc_mov(A, C)
             default: {}
+        }
+        break;
+    case REGISTER_B:
+        switch (rj) {
+            opc_mov(B, A)
+            opc_mov(B, C)
+            default: {}
+        }
+        break;
+    case REGISTER_C:
+        switch (rj) {
+            opc_mov(C, A)
+            opc_mov(C, B)
+            default: {}
+        }
+        break;
+    default: {}
     }
 }
 
@@ -277,10 +305,10 @@ parsei(MVI) {
 
     expect_and_consume(state, TokenType_Comma);
 
-    hex1_t xv = consume_hex(state, 1);
+    hex1_t xv = (hex1_t)consume_hex(state, 1);
 
     addInstructionAllReg(OPCODE_MVI, ri);
-    appendAnnotationToLastMemoryUnit(stenv, toStringUHex(xv));
+    appendAnnotationToLastMemoryUnit(stenv, toStringUHex((uhex1_t)xv));
     addToMemoryHex1(state->env, xv);
 }
 
@@ -297,6 +325,93 @@ parsei(SUB) {
     else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_SUB_C);
 }
 
+parsei(ANA) {
+    int ri = consume_reg(state);
+
+    if (ri == REGISTER_B) addInstruction(stenv, OPCODE_ANA_B);
+    else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_ANA_C);
+}
+
+parsei(ANI) {
+    hex1_t xv = (hex1_t)consume_hex(state, 1);
+    addInstructionWithHex1(stenv, OPCODE_ANI, xv);
+}
+
+parsei(CMA) {
+    addInstruction(stenv, OPCODE_CMA);
+}
+
+parsei(INR) {
+    int ri = consume_reg(state);
+    addInstructionAllReg(OPCODE_INR, ri);
+}
+
+parsei(LDA) {
+    Token_t * t_address = peek(state);
+    uhex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_LDA, address);
+}
+
+parsei(ORA) {
+    int ri = consume_reg(state);
+
+    if (ri == REGISTER_B) addInstruction(stenv, OPCODE_ORA_B);
+    else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_ORA_C);
+}
+
+parsei(ORI) {
+    hex1_t xv = (hex1_t)consume_hex(state, 1);
+    addInstructionWithHex1(stenv, OPCODE_ORI, xv);
+}
+
+parsei(RAL) {
+    addInstruction(stenv, OPCODE_RAL);
+}
+
+parsei(RAR) {
+    addInstruction(stenv, OPCODE_RAR);
+}
+
+parsei(STA) {
+    Token_t * t_address = peek(state);
+    uhex2_t address;
+    if (t_address == NULL)
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria (hexadecimal).");
+
+    if (t_address->type == TokenType_Hexadecimal) {
+        address = consume_hex(state, 2);
+    } else if (t_address->type == TokenType_Identifier) {
+        consume(state);
+        address = getAddressOfLabel(stenv, t_address->value);
+    } else {
+        VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
+    }
+    addInstructionWithHex2(stenv, OPCODE_STA, address);
+}
+
+parsei(XRA) {
+    int ri = consume_reg(state);
+
+    if (ri == REGISTER_B) addInstruction(stenv, OPCODE_XRA_B);
+    else if (ri == REGISTER_C) addInstruction(stenv, OPCODE_XRA_C);
+}
+
+parsei(XRI) {
+    hex1_t xv = (hex1_t)consume_hex(state, 1);
+    addInstructionWithHex1(stenv, OPCODE_XRI, xv);
+}
+
 
 
 // analisa uma instrução
@@ -307,6 +422,7 @@ void parse_instruction(ParserState * state) {
         parse_HLT(state);
     }
     PARSE_IF_INSTRUCTION(ADD)
+    PARSE_IF_INSTRUCTION(CALL)
     PARSE_IF_INSTRUCTION(DCR)
     PARSE_IF_INSTRUCTION(JMP)
     PARSE_IF_INSTRUCTION(JM)
@@ -314,8 +430,22 @@ void parse_instruction(ParserState * state) {
     PARSE_IF_INSTRUCTION(JZ)
     PARSE_IF_INSTRUCTION(MOV)
     PARSE_IF_INSTRUCTION(MVI)
+    PARSE_IF_INSTRUCTION(NOP)
     PARSE_IF_INSTRUCTION(OUT)
+    PARSE_IF_INSTRUCTION(RET)
     PARSE_IF_INSTRUCTION(SUB)
+    PARSE_IF_INSTRUCTION(ANA)
+    PARSE_IF_INSTRUCTION(ANI)
+    PARSE_IF_INSTRUCTION(CMA)
+    PARSE_IF_INSTRUCTION(INR)
+    PARSE_IF_INSTRUCTION(LDA)
+    PARSE_IF_INSTRUCTION(ORA)
+    PARSE_IF_INSTRUCTION(ORI)
+    PARSE_IF_INSTRUCTION(RAL)
+    PARSE_IF_INSTRUCTION(RAR)
+    PARSE_IF_INSTRUCTION(STA)
+    PARSE_IF_INSTRUCTION(XRA)
+    PARSE_IF_INSTRUCTION(XRI)
 
     state->env->currentInstruction++;
 }
@@ -323,7 +453,7 @@ void parse_instruction(ParserState * state) {
 // analisa um identificador
 void parse_identifier(ParserState * state) {
     Token_t * identifier_token = expect_and_consume(state, TokenType_Identifier);
-    char* lname = (char*) strdup(identifier_token->value);
+    char* lname = strdup(identifier_token->value);
     if (lname == NULL) VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "O rotulo eh invalido");
 
     (void) expect_and_consume(state, TokenType_Colon);
