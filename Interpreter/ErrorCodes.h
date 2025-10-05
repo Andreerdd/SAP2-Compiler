@@ -3,6 +3,7 @@
 // Author: André
 // Date: 16/09/2025
 //
+#pragma once
 
 #ifndef SAP2_COMPILER_ERRORCODES_H
 #define SAP2_COMPILER_ERRORCODES_H
@@ -21,11 +22,12 @@ typedef enum {
     EXIT_INVALID_INSTRUCTION = 5,       // se a instrução dada for inválida
     EXIT_READ_ONLY_ADDRESS = 6,         // se a posição de memória for READ-ONLY mas o usuário tentar editar
     EXIT_HLT = 7,                       // quando a instrução HLT é executada
+    EXIT_LIMIT_REACHED = 8,                     // quando o programa alcança algum limite de ex
 } ErrorCode_t;
 
 // As mensagens de erro //
 #define EXIT_NO_MEMORY_MESSAGE "Nao ha memoria disponivel para a interpretacao e/ou execucao do programa."
-#define EXIT_NO_FILE_MESSAGE "Uso incorreto do comando!\nComo usar o comando:\n\t./sap2 <arquivo.sap>"
+#define EXIT_NO_FILE_MESSAGE "Uso incorreto do comando!\nComo usar o comando:\n\t./sap2 <arquivo.asm> ..."
 #define EXIT_FILE_NOT_FOUND_MESSAGE "O arquivo dado nao foi encontrado!\nCertifique-se, por exemplo, de estar considerando o diretorio do arquivo."
 #define EXIT_INVALID_ARGUMENT_MESSAGE "Argumento Invalido"
 #define EXIT_INVALID_INSTRUCTION_MESSAGE "Instrucao Invalida"

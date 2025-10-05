@@ -14,8 +14,6 @@
 #include "../ErrorCodes.h"
 #define MAX_OPCODE 0xFF
 
-#define SHOW_MEMORY_ON_HLT (1)
-
 // instrução que só recebe o ambiente
 #define ex_fn(name) \
     ErrorCode_t name(Environment* env)

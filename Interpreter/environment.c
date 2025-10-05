@@ -11,6 +11,7 @@
 #include "Instructions/Instructions.h"
 #include "Utils/Utils.h"
 
+
 /**
  * Função para encontrar o ponto de inserção de um endereço
  * usando busca binária.
@@ -110,7 +111,7 @@ void addToMemoryHex1(Environment * env, hex1_t hex) {
     if (env->programCounter >= MEMORY_SIZE)
         EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
             "A memoria RAM esta cheia.\nPossivelmente, seu codigo ultrapassou o limite de memoria.");
-    if (env->programCounter < STARTER_MEMORY_ADDRESS)
+    if (env->programCounter < env_params->start_address)
         V_EXIT(EXIT_READ_ONLY_ADDRESS,
             "A posicao de memoria \"%x\" eh de apenas leitura (Read-Only)\nmas tentaram escrever nela.", env->programCounter);
 
@@ -130,7 +131,7 @@ void addToMemoryHex1(Environment * env, hex1_t hex) {
     env->programCounter++;
 }
 
-void addToMemoryHex1Annotation(Environment * env, uhex1_t hex, const char* text) {
+void addToMemoryHex1Annotation(Environment * env, uhex1_t hex, char* text) {
     if (env->isFirstPass) {
         env->programCounter++;
         return;
@@ -141,7 +142,7 @@ void addToMemoryHex1Annotation(Environment * env, uhex1_t hex, const char* text)
     if (env->programCounter >= MEMORY_SIZE)
         EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
             "A memoria RAM esta cheia.\nPossivelmente, seu codigo ultrapassou o limite de memoria.");
-    if (env->programCounter < STARTER_MEMORY_ADDRESS)
+    if (env->programCounter < env_params->start_address)
         V_EXIT(EXIT_READ_ONLY_ADDRESS,
             "A posicao de memoria \"%x\" eh de apenas leitura (Read-Only)\nmas tentaram escrever nela.", env->programCounter);
 
@@ -172,7 +173,7 @@ void addToMemoryHex2(Environment * env, hex2_t hex) {
     if (env->programCounter+1 >= MEMORY_SIZE) // +1 porque gasta 2 endereços
         EXIT_CUSTOM_ERR(EXIT_NO_MEMORY,
             "A memoria RAM esta cheia.\nPossivelmente, seu codigo ultrapassou o limite de memoria.");
-    if (env->programCounter < STARTER_MEMORY_ADDRESS)
+    if (env->programCounter < env_params->start_address)
         V_EXIT(EXIT_READ_ONLY_ADDRESS,
             "A posicao de memoria \"%x\" eh de apenas leitura (Read-Only)\nmas tentaram escrever nela.", env->programCounter);
 
@@ -334,6 +335,9 @@ void setRegister(Environment * env, int reg, hex1_t value) {
 }
 
 void setMemory(Environment * env, uhex2_t address, hex1_t value) {
+    if (isAddressUsed(env, address)) {
+        WARN("O endereco %4x esta sendo sobrescrito.", address);
+    }
     env->memory[address].value = value;
     env->memory[address].annotation = NULL;
 }
@@ -349,4 +353,63 @@ void setMemoryHex2(Environment * env, uhex2_t address, hex2_t value) {
 void setMemoryWithAnnotation(Environment * env, uhex2_t address, hex1_t value, const char * annotation) {
     env->memory[address].value = value;
     env->memory[address].annotation = strdup(annotation);
+}
+
+// env->memory[address]
+#define env_memory(address) env->memory[address]
+// env->memory[address].value
+#define env_memval(address) env_memory(address).value
+
+void print_memory(Environment * env) {
+    printf("\nMemoria RAM ================================\nEndereco\t| Conteudo\t| Simbolico\n");
+
+    qsort(env->usedAddresses, env->usedAddressesSize, sizeof(hex2_t), comp_hex2);
+
+    for (size_t i = 0; i < env->usedAddressesSize; i++) {
+        char* annotation = env_memory(env->usedAddresses[i]).annotation;
+        if (annotation != NULL) {
+            // é instrução
+            printf("%xH\t\t| %02xH \t\t| %s\n",
+            env->usedAddresses[i],
+            // Se for instrução, o valor guardado deverá ser lido como
+            // unsigned hex.
+            (uhex1_t)env_memval(env->usedAddresses[i]),
+            env_memory(env->usedAddresses[i]).annotation);
+
+        } else {
+            printf("%xH\t\t| %02xH \t\t| %s\n",
+            env->usedAddresses[i],
+            // Se não for instrução, deverá ser lido como signed hex.
+            (hex1_t)env_memval(env->usedAddresses[i]),
+            env_memory(env->usedAddresses[i]).annotation);
+        }
+    }
+    printf("\n");
+}
+
+void print_flags(Environment * env) {
+    printf("Flags ================\nFlag      | Valor\n");
+    printf("S (Sinal) | %d\n", env->flags[FLAG_S]);
+    printf("Z (Zero)  | %d\n\n", env->flags[FLAG_Z]);
+}
+
+void print_regs(Environment * env) {
+    printf("Registradores ========\nRegistrador    | Valor\n");
+    printf("A (Acumulador) | %xH\n", env->registers[ACCUMULATOR]);
+    printf("B              | %xH\n", env->registers[REGISTER_B]);
+    printf("C              | %xH\n", env->registers[REGISTER_C]);
+
+}
+
+
+void print_info(Environment * env) {
+    print_memory(env);
+    print_flags(env);
+    printf("Quantidade de instrucoes executadas: %u\n", env->currentInstruction);
+}
+
+void print_debug_info(Environment * env) {
+    printf("Quantidade de instrucoes executadas: %u\n", env->currentInstruction-1);
+    print_regs(env);
+    print_flags(env);
 }

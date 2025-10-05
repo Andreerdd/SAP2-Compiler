@@ -3,6 +3,7 @@
 // Author: André
 // Date: 19/09/2025
 //
+#pragma once
 
 #ifndef SAP2_COMPILER_ENVIRONMENT_H
 #define SAP2_COMPILER_ENVIRONMENT_H
@@ -18,14 +19,11 @@
 #define FLAG_Z 1
 
 #define MEMORY_SIZE UINT16_MAX // 65535 (que é 2 hexadecimais, 0xFFFF)
-#define STARTER_MEMORY_ADDRESS 0x8000 // entre 0000H e 07FFH, está o programa monitor
+#define STANDARD_STARTER_MEMORY_ADDRESS 0x8000 // entre 0000H e 07FFH, está o programa monitor
 
-// Endereços que guardarão o endereço onde RET direcionará.
-// No SAP2, esses endereços são os 2 últimos da memória. Aqui,
-// preferi que eles fossem os 2 últimos da parte da memória
-// que o SAP armazena apenas para ele.
-#define RET_ADDRESS_LSB (STARTER_MEMORY_ADDRESS - 2)
-#define RET_ADDRESS_MSB (STARTER_MEMORY_ADDRESS - 1)
+// Endereços que guardarão o endereço onde RET direcionará
+#define RET_ADDRESS_LSB (MEMORY_SIZE - 2)
+#define RET_ADDRESS_MSB (MEMORY_SIZE - 1)
 
 #define HEX1_MAX INT8_MAX
 #define HEX1_MIN INT8_MIN
@@ -37,6 +35,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define env_params env->params
+#define print_hex(xv) printf("%xH (Decimal: %d)\n", (uhex1_t)xv, xv)
+
 // Valor de um hexadecimal (0xFF)
 typedef int8_t hex1_t;
 // Valor de um hexadecimal (0xFF)
@@ -45,6 +46,21 @@ typedef uint8_t uhex1_t;
 typedef int16_t hex2_t;
 // Valor de dois hexadecimais sem sinal (0xFFFF)
 typedef uint16_t uhex2_t;
+
+#define STANDARD_HLT_PRINTS_MEMORY true
+#define STANDARD_MAX_EVALUATE (-1)
+#define STANDARD_DEBUG false
+// Os parâmetros para a interpretação do arquivo dado
+typedef struct {
+    // Endereço que o contador de programa iniciará
+    uhex2_t start_address;
+    // Se o HLT vai imprimir a memória
+    bool hlt_prints_memory;
+    // Quantidade máxima de instruções que podem ser executadas
+    int max_evaluated;
+    // Se o modo de depuração está ativo
+    bool debug_mode;
+} Parametros;
 
 // Rótulo
 typedef struct {
@@ -77,12 +93,20 @@ typedef struct {
     bool isFirstPass;
 
     // Extras //
+    // Os parâmetros passados para o usuário
+    Parametros * params;
     // Instrução atual (quantas instruções já se passaram)
     unsigned int currentInstruction;
     // Endereços usados
     uhex2_t * usedAddresses;
     // Quantidade de endereços usados
     size_t usedAddressesSize;
+    // A última instrução avaliada
+    memoryUnit_t last_instruction;
+    // Um valor que está esperando para ser impresso. Útil
+    // no processo de depuração, em que só deve ser impresso
+    // depois que as informações forem impressas
+    hex1_t hex_print_buffer;
 } Environment;
 
 /**
@@ -198,4 +222,28 @@ void setMemoryHex2(Environment * env, uhex2_t address, hex2_t value);
  * @param annotation a anotação que se quer fazer naquele endereço.
  */
 void setMemoryWithAnnotation(Environment * env, uhex2_t address, hex1_t value, const char * annotation);
+
+/**
+ * Imprime a memória do SAP2
+ * @param env o ambiente do SAP2
+ */
+void print_memory(Environment * env);
+
+/**
+ * Imprime os flags do SAP2
+ * @param env o ambiente do SAP2
+ */
+void print_flags(Environment * env);
+
+/**
+ * Imprime as informações do SAP2
+ * @param env o ambiente do SAP2
+ */
+void print_info(Environment * env);
+
+/**
+ * Imprime as informações de depuração da interpretação do código
+ * @param env o ambiente do SAP2
+ */
+void print_debug_info(Environment * env);
 #endif //SAP2_COMPILER_ENVIRONMENT_H

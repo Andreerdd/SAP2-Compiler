@@ -61,4 +61,10 @@ int comp_hex2(const void * a, const void * b);
  * @return string formatada
  */
 char* formatString(const char* format, ...);
+
+/**
+ * Para o programa até o usuário dar enter (quebra de linha),
+ * limpando o que o usuário digitou
+ */
+void enter_to_continue();
 #endif //SAP2_COMPILER_UTIL_H

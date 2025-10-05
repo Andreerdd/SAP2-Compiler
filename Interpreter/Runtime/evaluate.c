@@ -6,6 +6,7 @@
 
 #include "evaluate.h"
 #include "../Instructions/InstructionsFunctions.h"
+#include "../Utils/Utils.h"
 
 // Fetches
 #define EVAL_FETCH1()         consume_hex1(env)
@@ -86,6 +87,7 @@ hex2_t consume_hex2(Environment * env) {
 
 
 ErrorCode_t execute_instruction(Environment * env) {
+    env->last_instruction = env->memory[env->programCounter];
     uhex1_t opcode = consume_hex1(env);
 
     switch (opcode) {
@@ -184,16 +186,43 @@ ErrorCode_t execute_instruction(Environment * env) {
     return EXIT_SUCCESS;
 }
 
+// Imprime as informações e espera o usuário apertar enter
+void debugIfOn(Environment * env) {
+    if (env_params->debug_mode) {
+        print_debug_info(env);
+        // Para o print abaixo, eu poderia ter só voltado na memória
+        // até achar algo com uma anotação. No entanto, assim é mais
+        // bonitinho :)
+        printf("Instrucao atual: %s\n", env->last_instruction.annotation);
+        if ((uhex1_t)env->last_instruction.value == OPCODE_OUT) {
+            printf("Saida atual: ");
+            print_hex(env->registers[ACCUMULATOR]);
+            printf("\n");
+        }
+        printf(">> Pressione enter para continuar");
+        enter_to_continue();
+        printf("\n\n\n\n");
+    }
+}
+
 ErrorCode_t evaluate(Environment * env) {
     ErrorCode_t err;
     while (env->programCounter < MEMORY_SIZE) {
+        if (env_params->max_evaluated != -1 && env->currentInstruction > env_params->max_evaluated) {
+            V_EXIT(
+                EXIT_LIMIT_REACHED,
+                "Instrucao %i: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de execucao.",
+                env->currentInstruction);
+        }
+
         err = execute_instruction(env);
         if (err != EXIT_SUCCESS) {
             if (err == EXIT_HLT) // nesse caso, HLT é SUCESSO
                 return EXIT_SUCCESS;
-
+            debugIfOn(env);
             return err;
         }
+        debugIfOn(env);
     }
     return EXIT_SUCCESS;
 }

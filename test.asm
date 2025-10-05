@@ -1,16 +1,18 @@
-; --- Programa Principal ---
-MVI A, 07H      ; Inicia A com 7
+; Carrega os registradores
+MVI A, 1H
+MVI B, 2H
+MVI C, 3H
 
-CALL DUPLICAR   ; Chama a sub-rotina. A deve se tornar 14 (0EH)
-OUT 0H          ; Saída 0: Deve exibir 0EH
+; Faz algumas operações
+ADD B ; A = A+B
+OUT 0H
 
-CALL DUPLICAR   ; Chama de novo. A deve se tornar 28 (1CH)
-OUT 1H          ; Saída 1: Deve exibir 1CH
+ADD C ; A = (A+B)+C
+OUT 0H
 
-HLT             ; Fim do programa principal
+SUB B ; A = (A+B+C)-B = A+C
+SUB C
+SUB C
 
-; --- Definição da Sub-rotina ---
-DUPLICAR:
-    MOV B, A    ; Copia A para B (B=A)
-    ADD B       ; Adiciona B ao Acumulador (A = A + B, ou seja, A = A + A)
-    RET         ; Retorna para o programa principal
+OUT 0H
+HLT

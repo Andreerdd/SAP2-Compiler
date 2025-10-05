@@ -499,7 +499,7 @@ void parse(Token_t * tokens, size_t size, Environment * env) {
 
     env->isFirstPass = false;
     state.index = 0;
-    env->programCounter = STARTER_MEMORY_ADDRESS;
+    env->programCounter = env_params->start_address;
     env->currentInstruction = 0;
     while (state.index < state.size) {
         if (parse_statement(&state)) {

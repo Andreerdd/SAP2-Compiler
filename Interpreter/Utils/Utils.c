@@ -113,3 +113,8 @@ char* formatString(const char* format, ...) {
     // Retorna a string alocada
     return string;
 }
+
+void enter_to_continue() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}

@@ -15,8 +15,20 @@
 #include "Analysis/parser.h"
 #include "Runtime/evaluate.h"
 
+// Retorna as configurações de parâmetros normais
+Parametros * get_standard_parameters() {
+    Parametros * params = malloc(sizeof(Parametros));
+
+    params->start_address = STANDARD_STARTER_MEMORY_ADDRESS;
+    params->hlt_prints_memory = STANDARD_HLT_PRINTS_MEMORY;
+    params->max_evaluated = STANDARD_MAX_EVALUATE;
+    params->debug_mode = STANDARD_DEBUG;
+
+    return params;
+}
+
 // Interpreta o arquivo
-ErrorCode_t interpret(FILE * file) {
+ErrorCode_t interpret(FILE * file, Parametros * params) {
 
     ErrorCode_t err;
 
@@ -33,14 +45,16 @@ ErrorCode_t interpret(FILE * file) {
     // Inicializa o ambiente do SAP2
     Environment env = {
         .memory = calloc(MEMORY_SIZE, sizeof(memoryUnit_t)),
-        .programCounter = STARTER_MEMORY_ADDRESS,
+        .programCounter = params->start_address,
         .registers = calloc(NUMBER_OF_REGISTERS, sizeof(hex1_t)),
         .symbolTable = NULL,
         .symbolCount = 0,
 
+        .params = params,
         .currentInstruction = 1,
         .usedAddresses = NULL,
-        .usedAddressesSize = 0
+        .usedAddressesSize = 0,
+        .hex_print_buffer = 0,
     };
     env.flags[FLAG_S] = 0;
     // flag de 0 começa inicializado, uma vez que os valores
@@ -71,7 +85,7 @@ ErrorCode_t interpret(FILE * file) {
     parse(tokens, tokens_size, &env);
 
     // Reinicia o contador de programa
-    env.programCounter = STARTER_MEMORY_ADDRESS;
+    env.programCounter = params->start_address;
     env.currentInstruction = 1;
 
     // Avalia(executa) o código

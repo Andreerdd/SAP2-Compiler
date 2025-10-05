@@ -41,39 +41,18 @@ ex_fn_reg(execute_dcr) {
 }
 
 ex_fn(execute_hlt) {
+    // Tira do buffer e coloca na saida
     fflush(stdout);
+
     // Antes de sair, imprime a memória
 
-    // Esse if é praticamente desnecessário, já que, para chegar aqui,
-    // precisaria de ter o OPCODE do HLT na memória (portanto, algum
-    // endereço da memória foi usado).
-    if (env->usedAddressesSize > 0 && SHOW_MEMORY_ON_HLT) {
-        printf("\nMemoria RAM ================================\nEndereco\t| Conteudo\t| Simbolico\n");
-
-        qsort(env->usedAddresses, env->usedAddressesSize, sizeof(hex2_t), comp_hex2);
-
-        for (size_t i = 0; i < env->usedAddressesSize; i++) {
-            char* annotation = env_memory(env->usedAddresses[i]).annotation;
-            if (annotation != NULL) {
-                // é instrução
-                printf("%xH\t\t| %02xH \t\t| %s\n",
-                env->usedAddresses[i],
-                // Se for instrução, o valor guardado deverá ser lido como
-                // unsigned hex.
-                (uhex1_t)env_memval(env->usedAddresses[i]),
-                env_memory(env->usedAddresses[i]).annotation);
-
-            } else {
-                printf("%xH\t\t| %02xH \t\t| %s\n",
-                env->usedAddresses[i],
-                // Se não for instrução, deverá ser lido como signed hex.
-                (hex1_t)env_memval(env->usedAddresses[i]),
-                env_memory(env->usedAddresses[i]).annotation);
-            }
-        }
+    // A verificação de "env->usedAddressesSize > 0" é praticamente desnecessária,
+    // já que, para chegar aqui, precisaria de ter o OPCODE do HLT na memória
+    // (portanto, algum endereço da memória foi usado).
+    if (env->usedAddressesSize > 0 && env_params->hlt_prints_memory) {
+        print_info(env);
     }
 
-    //exit(EXIT_SUCCESS);
     return EXIT_HLT;
 }
 
@@ -108,8 +87,12 @@ ex_fn_rv(execute_mvi) {
 }
 
 ex_fn_val(execute_out) {
-    printf("%xH (Decimal: %d)\n", (uhex1_t)REG_A, REG_A);
-    fflush(stdout);
+    if (!env_params->debug_mode) {
+        print_hex(REG_A);
+        fflush(stdout);
+    } else {
+        env->hex_print_buffer = REG_A;
+    }
     return EXIT_SUCCESS;
 }
 
