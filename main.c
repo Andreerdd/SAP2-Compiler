@@ -30,7 +30,7 @@ Parametros * getParametros(int argc, char ** argv) {
             } else {
                 V_EXIT(
                 EXIT_INVALID_ARGUMENT,
-"O parametro \"%s\" espera um hexadecimal mas foi encontrado o valor \"%s\".\nVerifique se esse valor esta no formato de um hexadecimal \"1234H\".",
+"O parametro \"%s\" espera um hexadecimal mas foi encontrado o valor \"%s\".\n       Verifique se:\n\t- Esse valor esta no formato de um hexadecimal \"1234H\";\n\t- Se esse valor nao foi escrito no lugar errado;\n\t- Se ha apenas um espaco entre o parametro e o valor.",
                 argv[i-1],
                 argv[i]
                 );
