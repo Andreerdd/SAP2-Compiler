@@ -24,7 +24,7 @@
 // definir o acumulador
 #define SET_ACC(v) SET_REG(ACCUMULATOR, v)
 
-// env->registers[r]
+// acessa o registrador dado
 #define REG(r) env->registers[r]
 
 // env->registers[ACCUMULATOR]
