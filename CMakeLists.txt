@@ -9,15 +9,15 @@ add_executable(SAP2_Compiler main.c
         Interpreter/ErrorCodes.h
         Interpreter/Utils/Utils.h
         Interpreter/Utils/Utils.c
-        interpreter/interpreter.c
-        interpreter/interpreter.h
+        Interpreter/interpreter.c
+        Interpreter/interpreter.h
         Interpreter/Analysis/parser.c
         Interpreter/Analysis/parser.h
-        interpreter/environment.c
-        interpreter/environment.h
-        interpreter/Instructions/InstructionsFunctions.h
-        interpreter/Instructions/InstructionsFunctions.c
-        interpreter/Instructions/InstructionsFunctions.h
-        interpreter/Instructions/Instructions.c
+        Interpreter/environment.c
+        Interpreter/environment.h
+        Interpreter/Instructions/InstructionsFunctions.h
+        Interpreter/Instructions/InstructionsFunctions.c
+        Interpreter/Instructions/InstructionsFunctions.h
+        Interpreter/Instructions/Instructions.c
         Interpreter/Runtime/evaluate.c
         Interpreter/Runtime/evaluate.h)

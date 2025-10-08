@@ -30,13 +30,26 @@
 #define HEX2_MAX INT16_MAX
 #define UHEX2_MAX UINT16_MAX
 
+// Maior valor HEX
 #define MAX_INT_TO_HEX 0xFF
+
+// Maior quantidade de algarismos de um número com 1 hexadecimal
+#define MAX_LENGTH_SINGLE_HEX (2 + 1) // FFH
+
+// Macros que retornam a entrada/saída de cada byte
+#define __in_flow(x) stdin
+#define __out_flow(x) stdout
+
+#define stdoutflow __out_flow(0)
+#define stdinflow __in_flow(0)
+
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #define env_params env->params
-#define print_hex(xv) printf("%xH (Decimal: %d)\n", (uhex1_t)xv, xv)
+#define print_hex(f, xv) fprintf(f, "%xH (Decimal: %d)\n", (uhex1_t)xv, xv)
+
 
 // Valor de um hexadecimal (0xFF)
 typedef int8_t hex1_t;
@@ -46,6 +59,7 @@ typedef uint8_t uhex1_t;
 typedef int16_t hex2_t;
 // Valor de dois hexadecimais sem sinal (0xFFFF)
 typedef uint16_t uhex2_t;
+
 
 #define STANDARD_HLT_PRINTS_MEMORY true
 #define STANDARD_MAX_EVALUATE (-1)
@@ -107,6 +121,8 @@ typedef struct {
     // no processo de depuração, em que só deve ser impresso
     // depois que as informações forem impressas
     hex1_t hex_print_buffer;
+    // O valor do fluxo de dados que está esperando para ser usado.
+    uhex2_t hex_flow_buffer;
 } Environment;
 
 /**
@@ -246,4 +262,11 @@ void print_info(Environment * env);
  * @param env o ambiente do SAP2
  */
 void print_debug_info(Environment * env);
+
+/**
+ * Lê um hexadecimal do fluxo de dados de entrada dado
+ * @param flow o número que representa o lugar do fluxo de dados
+ * @return Hexadecimal lido
+ */
+hex1_t get_1hex_from_in(uhex1_t flow);
 #endif //SAP2_COMPILER_ENVIRONMENT_H

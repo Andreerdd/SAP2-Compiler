@@ -59,7 +59,7 @@ Parametros * getParametros(int argc, char ** argv) {
             // Verifica se é algum tipo de valor para um parâmetro //
             // Verifica se é um número
             char* endptr = NULL;
-            int vi = (int) strtol(argv[i], &endptr, 10);
+            (void)strtol(argv[i], &endptr, 10);
             if (strlen(endptr) == 0) {
                 continue;
             }

@@ -21,6 +21,7 @@ const char* INSTRUCTIONS[] = {
     "DCR",
     "HLT",
     "INR",
+    "IN",
     "JMP",
     "JM",
     "JNZ",
@@ -94,6 +95,9 @@ const char* getInstructionName(uhex1_t opcode) {
         // HLT
         case OPCODE_HLT: return "HLT";
 
+        // IN
+        case OPCODE_IN: return "IN";
+
         // INR
         case OPCODE_INR_A: return "INR A";
         case OPCODE_INR_B: return "INR B";
@@ -152,6 +156,6 @@ const char* getInstructionName(uhex1_t opcode) {
         case OPCODE_XRI:   return "XRI";
 
         default:
-            return NULL; // Opcode desconhecido
+            return "[Instrucao Sem Nome Definido]"; // Opcode desconhecido
     }
 }

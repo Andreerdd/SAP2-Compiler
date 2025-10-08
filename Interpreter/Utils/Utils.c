@@ -48,7 +48,8 @@ errno_t str_to_hex1(const char* text, hex1_t* out) {
 
     char* endp = NULL;
     unsigned long tmp = strtoul(buf, &endp, 16);
-    if (endp == buf || *endp != '\0' || tmp > MAX_INT_TO_HEX) return EXIT_INVALID_ARGUMENT;
+    if (endp == buf || *endp != '\0') return EXIT_INVALID_ARGUMENT;
+    if (tmp > MAX_INT_TO_HEX) return EXIT_ILLEGAL_HEX;
     *out = (hex1_t)(uint8_t)tmp;
 
     return EXIT_SUCCESS;
@@ -68,7 +69,8 @@ errno_t str_to_hex2(const char* text, hex2_t* out) {
 
     char* endp = NULL;
     unsigned long val = strtoul(buf, &endp, 16);
-    if (endp == buf || *endp != '\0' || val > HEX2_MAX) return EXIT_INVALID_ARGUMENT;
+    if (endp == buf || *endp != '\0') return EXIT_INVALID_ARGUMENT;
+    if (val > HEX2_MAX) return EXIT_ILLEGAL_HEX;
 
     *out = (hex2_t)val;
     return EXIT_SUCCESS;

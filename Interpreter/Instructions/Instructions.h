@@ -39,6 +39,9 @@ typedef enum {
     // HLT
     OPCODE_HLT = 0x76,
 
+    // IN
+    OPCODE_IN = 0xDB,
+
     // INR
     OPCODE_INR_A = 0x3C,
     OPCODE_INR_B = 0x04,

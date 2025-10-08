@@ -27,10 +27,18 @@
 // Verifica se o valor v é um hexadecimal dentro dos limites de "s" hexadecimais (4*s bits).
 #define check_hex(name, s, v) \
     hex##s##_t name;                                                                       \
-    if (CAT2(str_to_hex, s)(v->value, &name) != EXIT_SUCCESS)                                     \
-        VI_EXIT(EXIT_INVALID_ARGUMENT, "Argumento hexadecimal invalido \"%s\" (%s)\n",      \
+    errno_t c_exit = CAT2(str_to_hex, s)(v->value, &name);                                \
+    if (c_exit != EXIT_SUCCESS) {                                    \
+        if (c_exit == EXIT_ILLEGAL_HEX) \
+        VI_EXIT(EXIT_ILLEGAL_HEX, \
+"Verifique se \"%s\" excedeu o limite aceito (se nao esta\n\tusando um hexadecimal maior que FFH para um parametro que\n\taceita apenas ate FFH, por exemplo).",\
         v ? v->value : "null",                                                              \
-        v ? getTokenTypeString(v->type) : getTokenTypeString(TokenType_Unknown));           \
+            v ? getTokenTypeString(v->type) : getTokenTypeString(TokenType_Unknown));           \
+        else \
+            VI_EXIT(EXIT_INVALID_ARGUMENT, "Argumento hexadecimal invalido \"%s\" (%s)\n",      \
+            v ? v->value : "null",                                                              \
+            v ? getTokenTypeString(v->type) : getTokenTypeString(TokenType_Unknown));           \
+       }\
     if (name > HEX##s##_MAX)                                                               \
         VI_EXIT(EXIT_INVALID_ARGUMENT, "Valor hexadecimal muito grande: %x\n", name);
 
@@ -89,11 +97,15 @@ Token_t* expect_and_consume(ParserState* state, TokenType_t expected_type) {
         do {
             last_token = state->tokens[state->index];
             if (state->index == 0) {
+                char* tts = token ? getTokenTypeString(token->type) : getTokenTypeString(TokenType_Unknown);
+                if (tts == getTokenTypeString(TokenType_Identifier)) {
+                    tts = "Identificador/Desconhecido";
+                }
                 // Avisa o erro e sai do programa
                 VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe: esperado %s, encontrado \"%s\" (%s)\n",
                 getTokenTypeString(expected_type),
                 token ? token->value : "null",
-                token ? getTokenTypeString(token->type) : getTokenTypeString(TokenType_Unknown));
+                tts);
             }
             state->index--;
         } while (last_token.type != TokenType_Identifier && last_token.type != TokenType_Instruction);
@@ -318,6 +330,12 @@ parsei(OUT) {
     addInstructionWithHex2(stenv, OPCODE_OUT, xv);
 }
 
+parsei(IN) {
+    hex2_t xv = consume_hex(state, 2);
+
+    addInstructionWithHex2(stenv, OPCODE_IN, xv);
+}
+
 parsei(SUB) {
     int ri = consume_reg(state);
 
@@ -437,6 +455,7 @@ void parse_instruction(ParserState * state) {
     PARSE_IF_INSTRUCTION(ANA)
     PARSE_IF_INSTRUCTION(ANI)
     PARSE_IF_INSTRUCTION(CMA)
+    PARSE_IF_INSTRUCTION(IN)
     PARSE_IF_INSTRUCTION(INR)
     PARSE_IF_INSTRUCTION(LDA)
     PARSE_IF_INSTRUCTION(ORA)

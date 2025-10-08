@@ -88,10 +88,19 @@ ex_fn_rv(execute_mvi) {
 
 ex_fn_val(execute_out) {
     if (!env_params->debug_mode) {
-        print_hex(REG_A);
-        fflush(stdout);
+        print_hex(stdoutflow, REG_A);
+        fflush(stdoutflow);
     } else {
         env->hex_print_buffer = REG_A;
+    }
+    return EXIT_SUCCESS;
+}
+
+ex_fn_val(execute_in) {
+    if (!env_params->debug_mode) {
+        SET_ACC(get_1hex_from_in(value));
+    } else {
+        env->hex_flow_buffer = value;
     }
     return EXIT_SUCCESS;
 }

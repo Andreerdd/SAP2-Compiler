@@ -7,6 +7,9 @@
 #include <stdint.h> // uint8_t
 
 #include "environment.h"
+
+#include <ctype.h>
+
 #include "ErrorCodes.h"
 #include "Instructions/Instructions.h"
 #include "Utils/Utils.h"
@@ -284,7 +287,7 @@ void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
         int i = getLabelFromAddress(env, value);
         if (i != -1) {
             addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %s\t\t(%s aponta para %2xH)",
+        formatString("%s %s\t\t(%s aponta para %xH)",
             (char*)getInstructionName(opcode),
             env->symbolTable[i].name,
             env->symbolTable[i].name,
@@ -292,13 +295,13 @@ void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
         );
         } else {
             addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %2x", (char*)getInstructionName(opcode), value)
+        formatString("%s %x", (char*)getInstructionName(opcode), value)
         );
         }
 
     } else {
         addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %2xH", (char*)getInstructionName(opcode), value)
+        formatString("%s %xH", (char*)getInstructionName(opcode), value)
         );
     }
 
@@ -412,4 +415,37 @@ void print_debug_info(Environment * env) {
     printf("Quantidade de instrucoes executadas: %u\n", env->currentInstruction-1);
     print_regs(env);
     print_flags(env);
+}
+
+hex1_t get_1hex_from_in(uhex1_t flow) {
+    char in[MAX_LENGTH_SINGLE_HEX + 1];
+    if (__in_flow(flow) == stdinflow)
+        printf("\nEntrada atual:");
+
+    fgets(in, MAX_LENGTH_SINGLE_HEX + 1, __in_flow(flow));
+    for (int i = MAX_LENGTH_SINGLE_HEX; i > 0; i--) {
+        if (in[i] == 'H' || isalpha(in[i])) break;
+        in[i] = '\0';
+    }
+
+    // Transforma o texto em um hexadecimal e verifica se teve erros
+    hex1_t temp;
+    errno_t c_exit = str_to_hex1(in, &temp);
+    switch (c_exit) {
+        case EXIT_SUCCESS: break;
+        case EXIT_INVALID_ARGUMENT:
+            V_EXIT(EXIT_INVALID_ARGUMENT,
+                "A instrucao IN esperava um hexadecimal, mas recebeu \"%s\".\nVerifique se o numero esta na forma 12H.", in);
+        case EXIT_NULL_ARGUMENT:
+            EXIT_CUSTOM_ERR(EXIT_NULL_ARGUMENT,
+                "A instrucao IN esperava um hexadecimal, mas recebeu nada.\nVerifique se o numero foi digitado corretamente e esta na forma 12H.");
+
+        default: {
+            V_EXIT(EXIT_INVALID_ARGUMENT,
+                "A instrucao IN esperava um hexadecimal, mas recebeu um termo desconhecido: \"%s\"", in);
+        }
+    }
+
+    // Retorna o hexadecimal obtido
+    return temp;
 }

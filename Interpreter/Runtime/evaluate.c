@@ -118,6 +118,9 @@ ErrorCode_t execute_instruction(Environment * env) {
             return execute_hlt(env);
         }
 
+        // IN
+        case OPCODE_IN: EVAL_ENC__HEX2(execute_out)
+
         // INR
         case OPCODE_INR_A: EVAL_ENC__REG(execute_inr, ACCUMULATOR)
         case OPCODE_INR_B: EVAL_ENC__REG(execute_inr, REGISTER_B)
@@ -189,16 +192,25 @@ ErrorCode_t execute_instruction(Environment * env) {
 // Imprime as informações e espera o usuário apertar enter
 void debugIfOn(Environment * env) {
     if (env_params->debug_mode) {
-        print_debug_info(env);
         // Para o print abaixo, eu poderia ter só voltado na memória
         // até achar algo com uma anotação. No entanto, assim é mais
         // bonitinho :)
         printf("Instrucao atual: %s\n", env->last_instruction.annotation);
-        if ((uhex1_t)env->last_instruction.value == OPCODE_OUT) {
+
+        // Se a última instrução for alguma específica, trata ela de forma diferente
+        uhex1_t liv = env->last_instruction.value;
+        if (liv == OPCODE_OUT) {
+            print_hex(__out_flow(env->hex_flow_buffer), env->registers[ACCUMULATOR]);
             printf("Saida atual: ");
-            print_hex(env->registers[ACCUMULATOR]);
+            printf(">> Pressione enter para continuar");
+            enter_to_continue();
+        } else if (liv == OPCODE_IN) {
+            setRegister(env, ACCUMULATOR, get_1hex_from_in(env->hex_flow_buffer));
             printf("\n");
         }
+
+        print_debug_info(env);
+
         printf(">> Pressione enter para continuar");
         enter_to_continue();
         printf("\n\n\n\n");

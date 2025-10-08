@@ -22,7 +22,8 @@ typedef enum {
     EXIT_INVALID_INSTRUCTION = 5,       // se a instrução dada for inválida
     EXIT_READ_ONLY_ADDRESS = 6,         // se a posição de memória for READ-ONLY mas o usuário tentar editar
     EXIT_HLT = 7,                       // quando a instrução HLT é executada
-    EXIT_LIMIT_REACHED = 8,                     // quando o programa alcança algum limite de ex
+    EXIT_LIMIT_REACHED = 8,             // quando o programa alcança algum limite de execução
+    EXIT_ILLEGAL_HEX = 9                // quando é tentado colocar um hexadecimal de tamanho maior que aguenta
 } ErrorCode_t;
 
 // As mensagens de erro //
@@ -31,6 +32,7 @@ typedef enum {
 #define EXIT_FILE_NOT_FOUND_MESSAGE "O arquivo dado nao foi encontrado!\nCertifique-se, por exemplo, de estar considerando o diretorio do arquivo."
 #define EXIT_INVALID_ARGUMENT_MESSAGE "Argumento Invalido"
 #define EXIT_INVALID_INSTRUCTION_MESSAGE "Instrucao Invalida"
+#define EXIT_ILLEGAL_HEX_MESSAGE "Numero hexadecimal excedeu o limite aceito"
 
 // Macros //
 
