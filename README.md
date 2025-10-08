@@ -1,5 +1,5 @@
-# SAP2-Compiler
-Compilador do microprocessador "Simple-As-Possible 2".
+# SAP2-Interpreter
+Interpreter do microprocessador "Simple-As-Possible 2".
 
 ## Como usar?
 Obtenha o arquivo executável específico para seu caso _(Windows/Linux, ARM, ...)_ e execute-o da
@@ -14,13 +14,13 @@ Observações:
 - O `[arquivo_executavel]` vai estar em função do sistema do usuário (Windows/Linux, ARM, ...).
 Então, por exemplo, se o seu sistema for Windows (x64 ou x86), seu comando se aparentaria com:
 ```bash
-./sap2-compiler-windows.exe arquivo.asm
+./sap2-interpreter-windows.exe arquivo.asm
 ```
 - O arquivo, necessariamente, vem antes dos parâmetros.
 
 Um exemplo de comando para o sistema operacional Ubuntu seria:
 ```bash
-./sap2-compiler-linux.exe test.asm
+./sap2-interpreter-linux.exe test.asm
 ```
 
 ### Parâmetros:
@@ -33,7 +33,7 @@ por vez, mostrando informações a cada execução (como o valor dos registrador
 
 Por exemplo, caso queira executar s:
 ```bash
-./sap2-compiler-windows test.asm --inicio 1000H
+./sap2-interpreter-windows test.asm --inicio 1000H
 ```
 - Nesse caso, o programa compilará o arquivo test.asm e começará a anotar as instruções a
   partir do endereço de memória `1000H`.
@@ -41,18 +41,18 @@ Por exemplo, caso queira executar s:
 
 Outro exemplo que usaria o modo de depuração e a saída limpa:
 ```bash
-./sap2-compiler-windows test.asm --inicio 2000H -sl -d
+./sap2-interpreter-windows test.asm --inicio 2000H -sl -d
 ```
 
 É interessante citar que os parâmetros são escritos não importa, apenas que o próximo texto em
 seguida deles seja seu(s) parâmetro(s) _(se houver)_. 
 Por exemplo,
 `
-./sap2-compiler-linux codigo.asm --inicio 1000H -sl
+./sap2-interpreter-linux codigo.asm --inicio 1000H -sl
 `
 funcionaria, ao mesmo tempo que
 `
-./sap2-compiler-linux codigo.asm 1000H --inicio -sl
+./sap2-interpreter-linux codigo.asm 1000H --inicio -sl
 `
 não funcionaria.
 
