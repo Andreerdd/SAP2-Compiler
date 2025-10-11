@@ -22,8 +22,6 @@
 // O ambiente do estado atual do parser
 #define stenv (state->env)
 
-// TODO: avisar que o hexadecimal é de um byte (hex1) ou de dois bytes (hex2) na mensagem de erro
-
 // Verifica se o valor v é um hexadecimal dentro dos limites de "s" hexadecimais (4*s bits).
 #define check_hex(name, s, v) \
     hex##s##_t name;                                                                       \
@@ -117,8 +115,6 @@ Token_t* expect_and_consume(ParserState* state, TokenType_t expected_type) {
         token ? token->value : "null",
         token ? getTokenTypeString(token->type) : getTokenTypeString(TokenType_Unknown));
 
-
-        return NULL;
     }
     consume(state);
     return token;
@@ -148,16 +144,47 @@ int consume_reg(ParserState * state) {
  * @return o hexadecimal
  */
 hex2_t consume_hex(ParserState * state, unsigned int size) {
-    Token_t * temp = expect_and_consume(state, TokenType_Hexadecimal);
+    Token_t * temp = peek(state);
 
-    if (size == 1) {
-        check_hex(rx, 1, temp);
+    // Verifica se há próximo e o tipo desse próximo
+    if (temp != NULL && temp->type == TokenType_Hexadecimal) {
+        consume(state);
+
+        if (size == 1) {
+            check_hex(rx, 1, temp);
+            return rx;
+        }
+
+        // se o tamanho não é 1, só pode ser 2
+        check_hex(rx, 2, temp);
         return rx;
     }
+    else if (temp != NULL && temp->type == TokenType_Identifier) {
+        consume(state);
 
-    // se o tamanho não é 1, só pode ser 2
-    check_hex(rx, 2, temp);
-    return rx;
+        // Obtém o valor
+        switch (size) {
+            case 1: {
+                hex1_t hex = getValueOfLabel(stenv, temp->value);
+                return hex;
+            } case 2: {
+                hex2_t hex = getValueOfLabel(stenv, temp->value);
+                return hex;
+            }
+            default: {
+                VI_EXIT(EXIT_INVALID_ARGUMENT,
+                    "Tamanho de numero desconhecido pelo programa: %u",
+                    size);
+            }
+
+        }
+    }
+
+    // Se chegou até aqui, é algo inválido
+    VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe: esperado Hexadecimal ou Identificador, encontrado \"%s\" (%s)\n",
+    temp ? temp->value : "null",
+    getTokenTypeString(temp->type));
+
 }
 
 parsei(ADD) {
@@ -177,7 +204,7 @@ parsei(CALL) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -221,7 +248,7 @@ parsei(JMP) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -238,7 +265,7 @@ parsei(JM) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -255,7 +282,7 @@ parsei(JNZ) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -272,7 +299,7 @@ parsei(JZ) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -325,15 +352,15 @@ parsei(MVI) {
 }
 
 parsei(OUT) {
-    hex2_t xv = consume_hex(state, 2);
+    hex1_t xv = (hex1_t)consume_hex(state, 1);
 
-    addInstructionWithHex2(stenv, OPCODE_OUT, xv);
+    addInstructionWithHex1(stenv, OPCODE_OUT, xv);
 }
 
 parsei(IN) {
-    hex2_t xv = consume_hex(state, 2);
+    hex1_t xv = (hex1_t)consume_hex(state, 1);
 
-    addInstructionWithHex2(stenv, OPCODE_IN, xv);
+    addInstructionWithHex1(stenv, OPCODE_IN, xv);
 }
 
 parsei(SUB) {
@@ -374,7 +401,7 @@ parsei(LDA) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -411,7 +438,7 @@ parsei(STA) {
         address = consume_hex(state, 2);
     } else if (t_address->type == TokenType_Identifier) {
         consume(state);
-        address = getAddressOfLabel(stenv, t_address->value);
+        address = getValueOfLabel(stenv, t_address->value);
     } else {
         VI_EXIT(EXIT_INVALID_ARGUMENT, "%s", "Esperado rotulo ou endereco de memoria(hexadecimal).");
     }
@@ -477,8 +504,20 @@ void parse_identifier(ParserState * state) {
 
     (void) expect_and_consume(state, TokenType_Colon);
 
-    // Salva esse endereço na Tabela de Símbolos com o nome dado
-    addLabel(state->env, lname, state->env->programCounter);
+    Token_t * next = peek(state);
+
+    // Vê se o próximo é um hexadecimal
+    if (next->type == TokenType_Hexadecimal) {
+        hex2_t value = consume_hex(state, 2);
+        // Salva esse valor na Tabela de Símbolos com o nome dado
+        addLabel(state->env, lname, value);
+    // Se o próximo não for, apenas salva
+    } else {
+        // Salva esse endereço na Tabela de Símbolos com o nome dado
+        addLabel(state->env, lname, state->env->programCounter);
+    }
+
+
 }
 
 // analisa o trecho de tokens atual

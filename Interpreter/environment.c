@@ -158,7 +158,7 @@ void addToMemoryHex1Annotation(Environment * env, uhex1_t hex, char* text) {
 
     // Sobrescreve e incrementa o contador de programa
     env->memory[env->programCounter] = (memoryUnit_t) {
-        .value = hex,
+        .value = (hex1_t)hex,
         .annotation = text
     };
     addAddressToUsedMemory(env, env->programCounter);
@@ -189,7 +189,7 @@ void addToMemoryHex2(Environment * env, hex2_t hex) {
 
     // Escreve o LSB
     env->memory[env->programCounter] = (memoryUnit_t) {
-        .value = hex & 0xFF,
+        .value = (hex1_t)(hex & 0xFF),
         .annotation = EMPTY_ANNOTATION
     };
     addAddressToUsedMemory(env, env->programCounter);
@@ -197,7 +197,7 @@ void addToMemoryHex2(Environment * env, hex2_t hex) {
 
     // Escreve o MSB
     env->memory[env->programCounter] = env->memory[env->programCounter] = (memoryUnit_t) {
-        .value = hex >> 8,
+        .value = (hex1_t)(hex >> 8),
         .annotation = EMPTY_ANNOTATION
     };
     addAddressToUsedMemory(env, env->programCounter);
@@ -208,7 +208,7 @@ void addToMemoryHex2(Environment * env, hex2_t hex) {
 int getLabelFromAddress(Environment * env, uhex2_t address) {
     // Procura o endereço
     for (int i = 0; i < env->symbolCount; i++) {
-        if (env->symbolTable[i].address == address)
+        if (env->symbolTable[i].value == address)
             return i;
     }
 
@@ -235,7 +235,7 @@ void addLabel(Environment * env, char * name, uhex2_t address) {
     // Salva esse endereço na Tabela de Símbolos com o nome dado
     label_t label = {
         .name = name,
-        .address = address
+        .value = address
     };
 
     // Se encontrou um com o mesmo nome, sobrescreve
@@ -256,7 +256,7 @@ void addLabel(Environment * env, char * name, uhex2_t address) {
     env->symbolTable = temp; // salva o novo vetor
 }
 
-uhex2_t getAddressOfLabel(Environment * env, char * name) {
+uhex2_t getValueOfLabel(Environment * env, char * name) {
     if (env->isFirstPass) {
         return 0;
     }
@@ -267,7 +267,7 @@ uhex2_t getAddressOfLabel(Environment * env, char * name) {
         V_EXIT(EXIT_INVALID_ARGUMENT, "Instrucao %d: O rotulo \"%s\" nao existe. ", env->currentInstruction, name);
 
     // Se chegou até aqui, encontrou, então retorna o endereço.
-    return env->symbolTable[label].address;
+    return env->symbolTable[label].value;
 }
 
 
@@ -277,7 +277,7 @@ void addInstruction(Environment * env, uhex1_t opcode) {
 
 void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value) {
     addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %2x", (char*)getInstructionName(opcode), value)
+        formatString("%s %xH", (char*)getInstructionName(opcode), value)
         );
     addToMemoryHex1(env, value);
 }
@@ -339,15 +339,34 @@ void setRegister(Environment * env, int reg, hex1_t value) {
 
 void setMemory(Environment * env, uhex2_t address, hex1_t value) {
     if (isAddressUsed(env, address)) {
-        WARN("O endereco %4x esta sendo sobrescrito.", address);
+        char* comp;
+        if (strcmp(env->memory[address].annotation,EMPTY_ANNOTATION) != 0) {
+            comp = formatString(
+                "Antes: %02xH\t(Anotacao: %s)\n\tDepois: %02xH\t(Anotacao: %s)",
+                (uhex1_t)env->memory[address].value,
+                env->memory[address].annotation,
+                (uhex1_t)value,
+                EVAL_DEFINED_MEMORY_ANNOTATION);
+        } else {
+            comp = formatString(
+                "Antes: %02xH\n\tDepois: %02xH(Anotacao: %s)",
+                (uhex1_t)env->memory[address].value,
+                (uhex1_t)value,
+                EVAL_DEFINED_MEMORY_ANNOTATION);
+        }
+        WARN(
+            "O endereco \"%4x\" da memoria esta sendo sobrescrito.\n\t%s",
+            address,
+            comp);
     }
+
     env->memory[address].value = value;
-    env->memory[address].annotation = NULL;
+    env->memory[address].annotation = EVAL_DEFINED_MEMORY_ANNOTATION;
 }
 
 void setMemoryHex2(Environment * env, uhex2_t address, hex2_t value) {
-    hex1_t lsb = (hex1_t) value & 0xFF;
-    hex1_t msb = (hex1_t) (value >> 8) & 0xFF;
+    hex1_t lsb = (hex1_t) (value & 0xFF);
+    hex1_t msb = (hex1_t) ((value >> 8) & 0xFF);
 
     setMemory(env, address, lsb);
     setMemory(env, address+1, msb);
@@ -370,22 +389,13 @@ void print_memory(Environment * env) {
 
     for (size_t i = 0; i < env->usedAddressesSize; i++) {
         char* annotation = env_memory(env->usedAddresses[i]).annotation;
-        if (annotation != NULL) {
-            // é instrução
-            printf("%xH\t\t| %02xH \t\t| %s\n",
-            env->usedAddresses[i],
-            // Se for instrução, o valor guardado deverá ser lido como
-            // unsigned hex.
-            (uhex1_t)env_memval(env->usedAddresses[i]),
-            env_memory(env->usedAddresses[i]).annotation);
-
-        } else {
-            printf("%xH\t\t| %02xH \t\t| %s\n",
-            env->usedAddresses[i],
-            // Se não for instrução, deverá ser lido como signed hex.
-            (hex1_t)env_memval(env->usedAddresses[i]),
-            env_memory(env->usedAddresses[i]).annotation);
-        }
+        // é instrução
+        printf("%xH\t\t| %02xH \t\t| %s\n",
+        env->usedAddresses[i],
+        // Se for instrução, o valor guardado deverá ser lido como
+        // unsigned hex.
+        (uhex1_t)env_memval(env->usedAddresses[i]),
+        env_memory(env->usedAddresses[i]).annotation);
     }
     printf("\n");
 }
@@ -419,10 +429,10 @@ void print_debug_info(Environment * env) {
 
 hex1_t get_1hex_from_in(uhex1_t flow) {
     char in[MAX_LENGTH_SINGLE_HEX + 1];
-    if (__in_flow(flow) == stdinflow)
+    if (_in_flow(flow) == stdinflow)
         printf("\nEntrada atual:");
 
-    fgets(in, MAX_LENGTH_SINGLE_HEX + 1, __in_flow(flow));
+    fgets(in, MAX_LENGTH_SINGLE_HEX + 1, _in_flow(flow));
     for (int i = MAX_LENGTH_SINGLE_HEX; i > 0; i--) {
         if (in[i] == 'H' || isalpha(in[i])) break;
         in[i] = '\0';

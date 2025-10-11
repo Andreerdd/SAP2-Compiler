@@ -119,7 +119,7 @@ ErrorCode_t execute_instruction(Environment * env) {
         }
 
         // IN
-        case OPCODE_IN: EVAL_ENC__HEX2(execute_out)
+        case OPCODE_IN: EVAL_ENC__HEX1(execute_out)
 
         // INR
         case OPCODE_INR_A: EVAL_ENC__REG(execute_inr, ACCUMULATOR)
@@ -157,7 +157,7 @@ ErrorCode_t execute_instruction(Environment * env) {
         case OPCODE_ORI:   EVAL_ENC__HEX1(execute_ori)
 
         // OUT
-        case OPCODE_OUT: EVAL_ENC__HEX2(execute_out)
+        case OPCODE_OUT: EVAL_ENC__HEX1(execute_out)
 
         // RAL/RAR
         case OPCODE_RAL: EVAL_ENC__NONE(execute_ral)
@@ -184,6 +184,9 @@ ErrorCode_t execute_instruction(Environment * env) {
         }
     }
 
+    // Simula o tempo dos T States
+    sleep_us(getInstructionTStates(opcode));
+
     env->currentInstruction++;
 
     return EXIT_SUCCESS;
@@ -200,7 +203,7 @@ void debugIfOn(Environment * env) {
         // Se a última instrução for alguma específica, trata ela de forma diferente
         uhex1_t liv = env->last_instruction.value;
         if (liv == OPCODE_OUT) {
-            print_hex(__out_flow(env->hex_flow_buffer), env->registers[ACCUMULATOR]);
+            print_hex(_out_flow(env->hex_flow_buffer), env->registers[ACCUMULATOR]);
             printf("Saida atual: ");
             printf(">> Pressione enter para continuar");
             enter_to_continue();
@@ -219,12 +222,28 @@ void debugIfOn(Environment * env) {
 
 ErrorCode_t evaluate(Environment * env) {
     ErrorCode_t err;
+    stopWatch_s local_stopwatch;
+    stopWatch_start(&local_stopwatch);
     while (env->programCounter < MEMORY_SIZE) {
         if (env_params->max_evaluated != -1 && env->currentInstruction > env_params->max_evaluated) {
             V_EXIT(
-                EXIT_LIMIT_REACHED,
-                "Instrucao %i: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de execucao.",
-                env->currentInstruction);
+                EXIT_INSTRUCTION_LIMIT_REACHED,
+                "Instrucao %i: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de execucao de instrucoes (%i).",
+                env->currentInstruction,
+                env_params->max_evaluated);
+        }
+        if ( seg_to_ms(stopWatch_timeElapsed(&local_stopwatch)) > env_params->max_time) {
+            // Imprime a memória (útil em alguns casos)
+            if (env_params->hlt_prints_memory) {
+                print_info(env);
+            }
+
+            WARN(
+                "Instrucao %i: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de tempo de execucao (%.3fs).\nSe quiser alterar esse limite, altere o parametro \"--limite-tempo\".",
+                env->currentInstruction,
+                ms_to_seg(env_params->max_time)
+            );
+            return EXIT_TIME_LIMIT_REACHED;
         }
 
         err = execute_instruction(env);

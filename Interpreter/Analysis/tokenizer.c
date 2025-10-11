@@ -209,8 +209,12 @@ Token_t getNextToken(FILE* file) {
         // Verifica se está em comentário
         if (comment) {
             // Se encontrou uma quebra de linha, para o comentário
-            if (c == '\n')
+            if (c == '\n') {
                 comment = false;
+                if (text != NULL)
+                    break;
+
+            }
             continue;
         }
 

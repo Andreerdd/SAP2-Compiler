@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "Interpreter/ErrorCodes.h"
 #include "Interpreter/interpreter.h"
@@ -36,7 +37,7 @@ Parametros * getParametros(int argc, char ** argv) {
                 );
             }
         }
-        else if (cmp_curr_str_r("--limite", "-l")) {
+        else if (cmp_curr_str_r("--limite-instrucoes", "-li")) {
             inr;
             char* endptr = NULL;
             int v = (int) strtol(argv[i], &endptr, 10);
@@ -48,6 +49,19 @@ Parametros * getParametros(int argc, char ** argv) {
                 );
             }
             parametros->max_evaluated = v;
+        }
+        else if (cmp_curr_str_r("--limite-tempo", "-lt")) {
+            inr;
+            char* endptr = NULL;
+            double v = strtod(argv[i], &endptr);
+            if (strlen(endptr) > 0 || v < 0) {
+                V_EXIT(EXIT_INVALID_ARGUMENT,
+                "O parametro \"%s\" espera um double positivo depois mas foi encontrado o valor \"%s\".\nVerifique se esse valor eh um numero inteiro positivo.",
+                argv[i-1],
+                argv[i]
+                );
+            }
+            parametros->max_time = v;
         }
         else if (cmp_curr_str_r("--saida-limpa", "-sl")) {
             parametros->hlt_prints_memory = false;
@@ -78,6 +92,7 @@ Parametros * getParametros(int argc, char ** argv) {
 }
 
 int main(int argc, char ** argv) {
+
     // Se tiver apenas 1 argumento(só a localização do executável),
     // mostra como funciona
     if (argc <= 1)
@@ -91,9 +106,15 @@ int main(int argc, char ** argv) {
     // Obtém os parâmetros
     Parametros * parametros = getParametros(argc, argv);
 
+    // Interpreta e calcula o tempo que demorou para interpretar
+    stopWatch_s stopWatch;
+    stopWatch_start(&stopWatch);
+
     // Interpreta o arquivo usando os parâmetros dados
     ErrorCode_t err = interpret(file, parametros);
-
+    stopWatch_end(&stopWatch);
+    printf("\nSaida de Erro: %d\nTempo de execucao: %.3f segundos", err, stopWatch.elapsed_time);
+    
     // Finaliza o programa
     free(parametros);
     return err;

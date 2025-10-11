@@ -14,6 +14,7 @@
 #include "Analysis/tokenizer.h"
 #include "Analysis/parser.h"
 #include "Runtime/evaluate.h"
+#include "Utils/Utils.h"
 
 // Retorna as configurações de parâmetros normais
 Parametros * get_standard_parameters() {
@@ -22,6 +23,7 @@ Parametros * get_standard_parameters() {
     params->start_address = STANDARD_STARTER_MEMORY_ADDRESS;
     params->hlt_prints_memory = STANDARD_HLT_PRINTS_MEMORY;
     params->max_evaluated = STANDARD_MAX_EVALUATE;
+    params->max_time = STANDARD_MAX_TIME;
     params->debug_mode = STANDARD_DEBUG;
 
     return params;
@@ -90,8 +92,6 @@ ErrorCode_t interpret(FILE * file, Parametros * params) {
 
     // Avalia(executa) o código
     ErrorCode_t exit_code = evaluate(&env);
-    WARN("Saida de Erro: %d\n", exit_code);
-
 
     // Fim do código //
 
@@ -106,5 +106,5 @@ ErrorCode_t interpret(FILE * file, Parametros * params) {
     free(env.registers);
 
     // Retorna sucesso
-    return EXIT_SUCCESS;
+    return exit_code;
 }

@@ -159,3 +159,52 @@ const char* getInstructionName(uhex1_t opcode) {
             return "[Instrucao Sem Nome Definido]"; // Opcode desconhecido
     }
 }
+
+unsigned short int getInstructionTStates(uhex1_t opcode) {
+    switch (opcode) {
+        // DCR
+        case OPCODE_DCR_A:
+        case OPCODE_DCR_B:
+        case OPCODE_DCR_C: return 4;
+
+        // NOP
+        case OPCODE_NOP: return 4;
+
+        // JMP
+        case OPCODE_JMP: return 10;
+
+        // JM, JN, JNZ
+        // Note que aqui, é considerado apenas se não pularem
+        case OPCODE_JM:
+        case OPCODE_JNZ:
+        case OPCODE_JZ:  return 7;
+
+        // MVI
+        case OPCODE_MVI_A:
+        case OPCODE_MVI_B:
+        case OPCODE_MVI_C: return 7;
+
+        // MOV
+        case OPCODE_MOV_A_B:
+        case OPCODE_MOV_A_C:
+        case OPCODE_MOV_B_A:
+        case OPCODE_MOV_B_C:
+        case OPCODE_MOV_C_A:
+        case OPCODE_MOV_C_B: return 4;
+
+        // RET
+        case OPCODE_RET: return 10;
+
+        // LDA e STA
+        case OPCODE_STA:
+        case OPCODE_LDA: return 13;
+
+        // OUT
+        case OPCODE_OUT: return 10;
+
+        // CALL
+        case OPCODE_CALL: return 18;
+
+        default: return 4; // retorna um valor fixo se não encontrar
+    }
+}

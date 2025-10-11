@@ -120,4 +120,11 @@ unsigned char isInstruction(char* str);
  */
 const char* getInstructionName(uhex1_t opcode);
 
+/**
+ * Retorna a quantidade de T States que a instrução dada usa
+ * @param opcode o código da instrução
+ * @return a quantidade de T States que a instrução usa
+ */
+unsigned short int getInstructionTStates(uhex1_t opcode);
+
 #endif //SAP2_COMPILER_INSTRUCTIONS_H

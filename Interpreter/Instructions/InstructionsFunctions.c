@@ -12,11 +12,10 @@
 #include "../ErrorCodes.h"
 #include "../environment.h"
 
-// env->memory[address]
-#define env_memory(address) env->memory[address]
-
 // env->memory[address].value
-#define env_memval(address) env_memory(address).value
+#define env_getmemval(address) env->memory[address].value
+
+#define env_setmemval(address, value) setMemory(env, address, value)
 
 // definir o registrador
 #define SET_REG(r, v) setRegister(env, r, v)
@@ -34,6 +33,7 @@ ex_fn_reg(execute_add) {
     SET_ACC(REG_A + env->registers[reg]);
     return EXIT_SUCCESS;
 }
+
 
 ex_fn_reg(execute_dcr) {
     SET_REG(reg, REG(reg)-1);
@@ -64,18 +64,18 @@ ex_fn_hex2(execute_jmp) {
 ex_fn_hex2(execute_call) {
     // Verifica se já tem coisa escrita
 
-    if (env_memval(RET_ADDRESS_LSB) != 0 || env_memval(RET_ADDRESS_MSB) != 0) {
+    if (env_getmemval(RET_ADDRESS_LSB) != 0 || env_getmemval(RET_ADDRESS_MSB) != 0) {
         WARN(
 "Instrucao %d: A instrucao \"CALL\" foi chamada durante uma subrotina.\nPor causa disso, o endereco de memoria para retornar (RET) foi sobrescrito.\nIsso nao eh recomendado, uma vez que seu programa pode \"se perder\".",
             env->currentInstruction);
     }
 
-    hex1_t lsb = (hex1_t) env->programCounter & 0xFF;
-    hex1_t msb = (hex1_t) (env->programCounter >> 8) & 0xFF;
+    hex1_t lsb = (hex1_t)(env->programCounter & 0xFF);
+    hex1_t msb = (hex1_t)((env->programCounter >> 8) & 0xFF);
 
     // eu poderia só fazer: setMemoryHex2(env, RET_ADDRESS_LSB, env->programCounter);
-    setMemory(env, RET_ADDRESS_LSB, lsb);
-    setMemory(env, RET_ADDRESS_MSB, msb);
+    env_setmemval(RET_ADDRESS_LSB, lsb);
+    env_setmemval(RET_ADDRESS_MSB, msb);
 
     env->programCounter = value;
     return EXIT_SUCCESS;
@@ -138,6 +138,7 @@ ex_fn_reg(execute_inr) {
 ex_fn_hex2(execute_jm) {
     if (env->flags[FLAG_S]) {
         env->programCounter = value;
+        sleep_us(_ts_to_change_pc);
     }
     return EXIT_SUCCESS;
 }
@@ -146,6 +147,7 @@ ex_fn_hex2(execute_jm) {
 ex_fn_hex2(execute_jnz) {
     if (!env->flags[FLAG_Z]) {
         env->programCounter = value;
+        sleep_us(_ts_to_change_pc);
     }
     return EXIT_SUCCESS;
 }
@@ -154,13 +156,14 @@ ex_fn_hex2(execute_jnz) {
 ex_fn_hex2(execute_jz) {
     if (env->flags[FLAG_Z]) {
         env->programCounter = value;
+        sleep_us(_ts_to_change_pc);
     }
     return EXIT_SUCCESS;
 }
 
 // LDA addr: A = M[addr]
 ex_fn_hex2(execute_lda) {
-    SET_ACC(env_memval(value));
+    SET_ACC(env_getmemval(value));
     return EXIT_SUCCESS;
 }
 
@@ -206,8 +209,8 @@ ex_fn(execute_rar) {
 
 // RET: PC = M[RET_ADDRESS] (endereço de retorno salvo previamente)
 ex_fn(execute_ret) {
-    hex1_t lsb = env_memval(RET_ADDRESS_LSB);
-    hex1_t msb = env_memval(RET_ADDRESS_MSB);
+    hex1_t lsb = env_getmemval(RET_ADDRESS_LSB);
+    hex1_t msb = env_getmemval(RET_ADDRESS_MSB);
 
     // É seguro ver se ambos são 0 para ver se
     // aponta para um lugar.
@@ -219,15 +222,15 @@ ex_fn(execute_ret) {
     env->programCounter = (uhex2_t)(((msb & 0xFF) << 8) | (lsb & 0xFF));
 
     // Esvazia os endereços de retorno (para fins de debug)
-    setMemory(env, RET_ADDRESS_MSB, 0);
-    setMemory(env, RET_ADDRESS_LSB, 0);
+    env_setmemval(RET_ADDRESS_LSB, 0);
+    env_setmemval(RET_ADDRESS_MSB, 0);
 
     return EXIT_SUCCESS;
 }
 
 // STA addr: M[addr] = A
 ex_fn_hex2(execute_sta) {
-    env_memval(value) = REG_A;
+    env_setmemval(value, REG_A);
     return EXIT_SUCCESS;
 }
 

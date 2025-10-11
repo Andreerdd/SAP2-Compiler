@@ -14,7 +14,7 @@
 // Os códigos de erro //
 typedef enum {
     EXIT_NO_MEMORY = -1,                // se não houver memória
-    // EXIT_SUCCESS = 0,                // sucesso
+    // EXIT_SUCCESS = 0,                // sucesso (já definido no <stdlib.h>)
     EXIT_NO_FILE = 1,                   // se não foi dado um arquivo na execução do código
     EXIT_FILE_NOT_FOUND = 2,            // se o arquivo dado não foi encontrado
     EXIT_INVALID_ARGUMENT = 3,          // se o argumento dado for inválido
@@ -22,8 +22,9 @@ typedef enum {
     EXIT_INVALID_INSTRUCTION = 5,       // se a instrução dada for inválida
     EXIT_READ_ONLY_ADDRESS = 6,         // se a posição de memória for READ-ONLY mas o usuário tentar editar
     EXIT_HLT = 7,                       // quando a instrução HLT é executada
-    EXIT_LIMIT_REACHED = 8,             // quando o programa alcança algum limite de execução
-    EXIT_ILLEGAL_HEX = 9                // quando é tentado colocar um hexadecimal de tamanho maior que aguenta
+    EXIT_INSTRUCTION_LIMIT_REACHED = 8, // quando o programa alcança o limite de instruções executadas
+    EXIT_TIME_LIMIT_REACHED = 9,        // quando o programa alcança o limite de tempo
+    EXIT_ILLEGAL_HEX = 10               // quando é tentado colocar um hexadecimal de tamanho maior que aguenta
 } ErrorCode_t;
 
 // As mensagens de erro //

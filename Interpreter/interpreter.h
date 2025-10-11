@@ -9,6 +9,7 @@
 #define SAP2_COMPILER_INTERPRETER_H
 
 #include <stdio.h>
+#include "Utils/Utils.h"
 #include "ErrorCodes.h"
 #include "environment.h"
 

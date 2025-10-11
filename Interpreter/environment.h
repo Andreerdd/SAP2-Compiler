@@ -25,6 +25,7 @@
 #define RET_ADDRESS_LSB (MEMORY_SIZE - 2)
 #define RET_ADDRESS_MSB (MEMORY_SIZE - 1)
 
+// Valores máximos dos hexadecimais
 #define HEX1_MAX INT8_MAX
 #define HEX1_MIN INT8_MIN
 #define HEX2_MAX INT16_MAX
@@ -37,11 +38,14 @@
 #define MAX_LENGTH_SINGLE_HEX (2 + 1) // FFH
 
 // Macros que retornam a entrada/saída de cada byte
-#define __in_flow(x) stdin
-#define __out_flow(x) stdout
+#define _in_flow(x) stdin
+#define _out_flow(x) stdout
 
-#define stdoutflow __out_flow(0)
-#define stdinflow __in_flow(0)
+#define stdoutflow _out_flow(0)
+#define stdinflow _in_flow(0)
+
+// Quantos T-States são precisos para alterar o PC
+#define _ts_to_change_pc 3
 
 
 #include <stdbool.h>
@@ -63,6 +67,7 @@ typedef uint16_t uhex2_t;
 
 #define STANDARD_HLT_PRINTS_MEMORY true
 #define STANDARD_MAX_EVALUATE (-1)
+#define STANDARD_MAX_TIME (10000)
 #define STANDARD_DEBUG false
 // Os parâmetros para a interpretação do arquivo dado
 typedef struct {
@@ -72,6 +77,8 @@ typedef struct {
     bool hlt_prints_memory;
     // Quantidade máxima de instruções que podem ser executadas
     int max_evaluated;
+    // Quantidade máxima de tempo que o programa pode durar (em milissegundos)
+    double max_time;
     // Se o modo de depuração está ativo
     bool debug_mode;
 } Parametros;
@@ -79,16 +86,22 @@ typedef struct {
 // Rótulo
 typedef struct {
     char* name;
-    uhex2_t address;
+    uhex2_t value;
 } label_t;
+
 
 // "Unidade de memória", criada para poder "anotar"
 // na memória
-#define EMPTY_ANNOTATION ""
 typedef struct {
     hex1_t value;
     char* annotation;
+    union {
+        long nInstruction;
+    } temp;
 } memoryUnit_t;
+#define EMPTY_ANNOTATION "" // Anotação vazia
+#define EVAL_DEFINED_MEMORY_ANNOTATION "Valor definido por uma instrucao" // Quando o trecho é definido por um setMemory()
+
 
 // Ambiente do SAP2
 typedef struct {
@@ -122,7 +135,7 @@ typedef struct {
     // depois que as informações forem impressas
     hex1_t hex_print_buffer;
     // O valor do fluxo de dados que está esperando para ser usado.
-    uhex2_t hex_flow_buffer;
+    hex2_t hex_flow_buffer;
 } Environment;
 
 /**
@@ -171,7 +184,7 @@ void addLabel(Environment * env, char * name, uhex2_t address);
  * @param name o nome do rótulo
  * @return endereço de memória do rótulo
  */
-uhex2_t getAddressOfLabel(Environment * env, char * name);
+uhex2_t getValueOfLabel(Environment * env, char * name);
 
 /**
  *

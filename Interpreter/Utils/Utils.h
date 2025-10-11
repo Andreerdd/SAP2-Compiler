@@ -7,6 +7,13 @@
 #ifndef SAP2_COMPILER_UTIL_H
 #define SAP2_COMPILER_UTIL_H
 
+// Headers necessários para o stopwatch
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <time.h>
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +26,27 @@
 // Para transformar um valor uhex1 em string
 #define toStringUHex(xv) formatString("%xH", xv)
 
+// Para transformar segundos em milissegundos
+#define seg_to_ms(s) (s * 1000)
+
+// Para transformar milissegundos em segundos
+#define ms_to_seg(s) (s / 1000)
+
+// Estrutura que representa um cronômetro
+typedef struct {
+    // Tempo passado (em segundos)
+    double elapsed_time;
+    #ifdef _WIN32
+        // Cronômetro para Windows
+        LARGE_INTEGER frequency;
+        LARGE_INTEGER start_time;
+    #else
+    #ifdef __linux__
+        // Cronômetro para Linux
+        struct timespec start_time;
+    #endif
+    #endif
+} stopWatch_s;
 
 /**
  * Adiciona o caractere dado ao fim da string. Se não conseguir
@@ -67,4 +95,29 @@ char* formatString(const char* format, ...);
  * limpando o que o usuário digitou
  */
 void enter_to_continue();
+
+/**
+ * Congela o código pelo tempo dado.
+ * @param microseconds tempo, em microssegundos, para esperar
+ */
+void sleep_us(long microseconds);
+
+/**
+ * Inicia o cronômetro dado.
+ * @param sw o cronômetro
+ */
+void stopWatch_start(stopWatch_s* sw);
+
+/**
+ * Para o cronômetro dado.
+ * @param sw o cronômetro
+ */
+void stopWatch_end(stopWatch_s* sw);
+
+/**
+ * Retorna o tempo (em segundos) passado desde o início do cronômetro dado.
+ * @param sw o cronômetro
+ * @return segundos passados desde o início do cronômetro
+ */
+double stopWatch_timeElapsed(stopWatch_s* sw);
 #endif //SAP2_COMPILER_UTIL_H

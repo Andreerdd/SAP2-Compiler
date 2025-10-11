@@ -7,6 +7,17 @@
 #include <stdint.h>
 #include <stdarg.h> // VA ARGS
 
+// Importa o respectivo header para usar sleep
+#ifdef _WIN32 // Verifica se é Windows
+    #include <pthread.h>
+    #include <time.h>
+#else
+    #ifdef __linux__ // Verifica se é linux
+        #include <unistd.h> // usleep
+    #endif // __linux__
+#endif // _WIN32
+
+
 #include "Utils.h"
 #include "../ErrorCodes.h"
 #include "../environment.h"
@@ -70,11 +81,12 @@ errno_t str_to_hex2(const char* text, hex2_t* out) {
     char* endp = NULL;
     unsigned long val = strtoul(buf, &endp, 16);
     if (endp == buf || *endp != '\0') return EXIT_INVALID_ARGUMENT;
-    if (val > HEX2_MAX) return EXIT_ILLEGAL_HEX;
+    if (val > UHEX2_MAX) return EXIT_ILLEGAL_HEX;
 
     *out = (hex2_t)val;
     return EXIT_SUCCESS;
 }
+
 
 int comp_hex2(const void * a, const void * b) {
     hex2_t xa = *(hex2_t*)a;
@@ -119,4 +131,96 @@ char* formatString(const char* format, ...) {
 void enter_to_continue() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
+}
+
+void windows_sleep_us(long microseconds) {
+    // Se a espera for muito curta, o overhead do timer não compensa,
+    // então faz busy-wait.
+    if (microseconds < 1000) {
+        LARGE_INTEGER frequency, start, end;
+        QueryPerformanceFrequency(&frequency);
+        QueryPerformanceCounter(&start);
+        double limit = (double)microseconds / 1000000.0;
+        do {
+            QueryPerformanceCounter(&end);
+        } while ((double)(end.QuadPart - start.QuadPart) / frequency.QuadPart < limit);
+        return;
+    }
+
+    // Para esperas mais longas, usamos o Waitable Timer para ser eficiente
+    HANDLE timer;
+    LARGE_INTEGER ft;
+
+    ft.QuadPart = -(10LL * microseconds);
+
+    timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    if (timer == NULL)
+        return; // Falha ao criar o timer
+
+
+    // Define o timer para disparar após o tempo especificado
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+
+    // Espera até que o timer dispare
+    WaitForSingleObject(timer, INFINITE);
+
+    // Limpa o recurso
+    CloseHandle(timer);
+}
+
+void sleep_us(long microseconds) {
+    #ifdef _WIN32
+        windows_sleep_us(microseconds);
+    #else
+        // Se for linux, usa usleep
+        #ifdef __linux__
+            usleep(microseconds);
+        #endif //__linux__
+    #endif // _WIN32
+}
+
+void stopWatch_start(stopWatch_s* sw) {
+    sw->elapsed_time = 0;
+    #ifdef _WIN32
+        QueryPerformanceFrequency(&sw->frequency);
+        QueryPerformanceCounter(&sw->start_time);
+    #else
+    #ifdef __linux__
+        clock_gettime(CLOCK_MONOTONIC, &sw->start_time);
+    #endif
+    #endif
+}
+
+void stopWatch_end(stopWatch_s* sw) {
+#ifdef _WIN32
+    LARGE_INTEGER end_time;
+    QueryPerformanceCounter(&end_time);
+
+    sw->elapsed_time = (double)(end_time.QuadPart - sw->start_time.QuadPart) / sw->frequency.QuadPart;
+#else
+#ifdef __linux__
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+    sw->elapsed_time = (end_time.tv_sec - sw->start_time.tv_sec)
+                     + (end_time.tv_nsec - sw->start_time.tv_nsec) / 1000000000.0;
+#endif
+#endif
+}
+
+double stopWatch_timeElapsed(stopWatch_s* sw) {
+#ifdef _WIN32
+    LARGE_INTEGER end_time;
+    QueryPerformanceCounter(&end_time);
+
+    return (double)(end_time.QuadPart - sw->start_time.QuadPart) / sw->frequency.QuadPart;
+#else
+#ifdef __linux__
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+    return (end_time.tv_sec - sw->start_time.tv_sec)
+           + (end_time.tv_nsec - sw->start_time.tv_nsec) / 1000000000.0;
+#endif
+#endif
 }
