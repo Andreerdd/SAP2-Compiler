@@ -53,7 +53,7 @@ ErrorCode_t interpret(FILE * file, Parametros * params) {
         .symbolCount = 0,
 
         .params = params,
-        .currentInstruction = 1,
+        .currentInstruction = 0,
         .usedAddresses = NULL,
         .usedAddressesSize = 0,
         .hex_print_buffer = 0,

@@ -88,6 +88,7 @@ hex2_t consume_hex2(Environment * env) {
 
 ErrorCode_t execute_instruction(Environment * env) {
     env->last_instruction = env->memory[env->programCounter];
+    env->currentInstruction = env->last_instruction.nInstruction;
     uhex1_t opcode = consume_hex1(env);
 
     switch (opcode) {
@@ -187,8 +188,6 @@ ErrorCode_t execute_instruction(Environment * env) {
     // Simula o tempo dos T States
     sleep_us(getInstructionTStates(opcode));
 
-    env->currentInstruction++;
-
     return EXIT_SUCCESS;
 }
 
@@ -228,7 +227,7 @@ ErrorCode_t evaluate(Environment * env) {
         if (env_params->max_evaluated != -1 && env->currentInstruction > env_params->max_evaluated) {
             V_EXIT(
                 EXIT_INSTRUCTION_LIMIT_REACHED,
-                "Instrucao %i: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de execucao de instrucoes (%i).",
+                "Instrucao %d: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de execucao de instrucoes (%i).",
                 env->currentInstruction,
                 env_params->max_evaluated);
         }
@@ -239,8 +238,9 @@ ErrorCode_t evaluate(Environment * env) {
             }
 
             WARN(
-                "Instrucao %i: nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de tempo de execucao (%.3fs).\nSe quiser alterar esse limite, altere o parametro \"--limite-tempo\".",
+                "Instrucao %d (%s): nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de tempo de execucao (%.3fs).\nSe quiser alterar esse limite, altere o parametro \"--limite-tempo\".",
                 env->currentInstruction,
+                getInstructionByNumber(env, env->currentInstruction),
                 ms_to_seg(env_params->max_time)
             );
             return EXIT_TIME_LIMIT_REACHED;

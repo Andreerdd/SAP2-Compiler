@@ -66,7 +66,7 @@ typedef enum {
 } while (0)
 // Mostra em que instrução está
 #define I_EXIT(E) {                                                                              \
-            fprintf(stderr, "Instrucao %d: %s\n", state->env.currentInstruction, E##_MESSAGE);   \
+            fprintf(stderr, "[ERRO] Instrucao %d: %s\n", state->env.currentInstruction, E##_MESSAGE);   \
             exit(E);                                                                             \
 } while (0)
 // Com variadic args (estilo printf) e mostra em que instrução está

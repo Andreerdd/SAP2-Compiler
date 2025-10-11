@@ -114,6 +114,15 @@ typedef struct {
 unsigned char isInstruction(char* str);
 
 /**
+ * Compara um texto com o texto de uma instrução, ignorando diferenças
+ * como maiúsculo/minúsculo.
+ * @param inst O nome da instrução
+ * @param str O texto que se quer verificar
+ * @return A comparação entre os textos
+ */
+int compare_str_with_instruction(const char * inst, const char * str);
+
+/**
  * Retorna o nome da operação do código dado
  * @param opcode Código de Operação da instrução
  * @return nome da instrução

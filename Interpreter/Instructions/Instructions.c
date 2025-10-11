@@ -6,6 +6,8 @@
 
 #include "Instructions.h"
 
+#include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define END_OF_INSTRUCTIONS "END_OF_INSTRUCTIONS"
@@ -46,6 +48,21 @@ const char* INSTRUCTIONS[] = {
     END_OF_INSTRUCTIONS
 };
 
+int compare_str_with_instruction(const char * inst, const char * str) {
+    size_t size_inst = strlen(inst), size_str = strlen(str);
+    // Se forem de tamanhos diferentes, é falso
+    if (size_inst != size_str) return size_inst > size_str ? 1 : -1;
+
+    for (size_t i = 0; i < size_inst; i++) {
+        int tli = tolower(inst[i]);
+        int tls = tolower(str[i]);
+        if (tli != tls) return tli > tls ? 1 : -1;
+    }
+
+    // Se chegou até aqui, é igual
+    return 0;
+}
+
 /**
  * Verifica se um dado texto é uma instrução
  * @param str o texto
@@ -53,9 +70,8 @@ const char* INSTRUCTIONS[] = {
  */
 unsigned char isInstruction(char* str) {
     size_t i = 0;
-
     while (strcmp(INSTRUCTIONS[i], END_OF_INSTRUCTIONS) != 0) {
-        if (strcmp(INSTRUCTIONS[i], str) == 0)
+        if (compare_str_with_instruction(INSTRUCTIONS[i], str) == 0)
             return 1;
         i++;
     }

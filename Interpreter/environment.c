@@ -67,9 +67,9 @@ void insertAddressIntoMemory(uhex2_t arr[], size_t * size, uhex2_t element) {
 
 int charToRegister(char c) {
     switch (c) {
-        case 'A': return ACCUMULATOR;
-        case 'B': return REGISTER_B;
-        case 'C': return REGISTER_C;
+        case 'A': case 'a': return ACCUMULATOR;
+        case 'B': case 'b': return REGISTER_B;
+        case 'C': case 'c': return REGISTER_C;
         default: return -1;
     }
 }
@@ -128,7 +128,8 @@ void addToMemoryHex1(Environment * env, hex1_t hex) {
     // Sobrescreve e incrementa o contador de programa
     env->memory[env->programCounter] = (memoryUnit_t) {
         .value = hex,
-        .annotation = EMPTY_ANNOTATION
+        .annotation = EMPTY_ANNOTATION,
+        .nInstruction = 0
     };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
@@ -159,7 +160,8 @@ void addToMemoryHex1Annotation(Environment * env, uhex1_t hex, char* text) {
     // Sobrescreve e incrementa o contador de programa
     env->memory[env->programCounter] = (memoryUnit_t) {
         .value = (hex1_t)hex,
-        .annotation = text
+        .annotation = text,
+        .nInstruction = MEMORY_UNIT_NOT_INSTRUCTION
     };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
@@ -190,7 +192,8 @@ void addToMemoryHex2(Environment * env, hex2_t hex) {
     // Escreve o LSB
     env->memory[env->programCounter] = (memoryUnit_t) {
         .value = (hex1_t)(hex & 0xFF),
-        .annotation = EMPTY_ANNOTATION
+        .annotation = EMPTY_ANNOTATION,
+        .nInstruction = MEMORY_UNIT_NOT_INSTRUCTION
     };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
@@ -198,7 +201,8 @@ void addToMemoryHex2(Environment * env, hex2_t hex) {
     // Escreve o MSB
     env->memory[env->programCounter] = env->memory[env->programCounter] = (memoryUnit_t) {
         .value = (hex1_t)(hex >> 8),
-        .annotation = EMPTY_ANNOTATION
+        .annotation = EMPTY_ANNOTATION,
+        .nInstruction = MEMORY_UNIT_NOT_INSTRUCTION
     };
     addAddressToUsedMemory(env, env->programCounter);
     env->programCounter++;
@@ -270,15 +274,22 @@ uhex2_t getValueOfLabel(Environment * env, char * name) {
     return env->symbolTable[label].value;
 }
 
+void setInstructionNumberToLastMemoryUnit(Environment * env, int val) {
+    if (env->isFirstPass) return;
+    env->memory[env->programCounter-1].nInstruction = val;
+}
+
 
 void addInstruction(Environment * env, uhex1_t opcode) {
     addToMemoryHex1Annotation(env, opcode, (char*)getInstructionName(opcode));
+    setInstructionNumberToLastMemoryUnit(env, env->currentInstruction);
 }
 
 void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value) {
     addToMemoryHex1Annotation(env, opcode,
         formatString("%s %xH", (char*)getInstructionName(opcode), value)
         );
+    setInstructionNumberToLastMemoryUnit(env, env->currentInstruction);
     addToMemoryHex1(env, value);
 }
 
@@ -287,11 +298,13 @@ void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
         int i = getLabelFromAddress(env, value);
         if (i != -1) {
             addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %s\t\t(%s aponta para %xH)",
-            (char*)getInstructionName(opcode),
-            env->symbolTable[i].name,
-            env->symbolTable[i].name,
-            (uhex2_t)value)
+        formatString(
+                "%s %s\t\t(%s aponta para %xH)",
+                (char*)getInstructionName(opcode),
+                env->symbolTable[i].name,
+                env->symbolTable[i].name,
+                (uhex2_t)value
+            )
         );
         } else {
             addToMemoryHex1Annotation(env, opcode,
@@ -304,8 +317,27 @@ void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
         formatString("%s %xH", (char*)getInstructionName(opcode), value)
         );
     }
-
+    setInstructionNumberToLastMemoryUnit(env, env->currentInstruction);
     addToMemoryHex2(env, value);
+}
+
+char* getOnlyInstructionFromAnnotation(char* annotation) {
+    char* inst;
+    if (annotation == NULL || strcmp(annotation, EMPTY_ANNOTATION) == 0) {
+        inst = EMPTY_ANNOTATION;
+    } else {
+        inst = strtok(annotation, "\t");
+    }
+    return inst;
+}
+
+char* getInstructionByNumber(Environment * env, int n) {
+    for (size_t i = 0; i < env->usedAddressesSize; i++) {
+        int ni = env->memory[env->usedAddresses[i]].nInstruction;
+        if (ni != MEMORY_UNIT_NOT_INSTRUCTION && env->memory[env->usedAddresses[i]].nInstruction == n)
+            return getOnlyInstructionFromAnnotation(env->memory[env->usedAddresses[i]].annotation);
+    }
+    return EMPTY_ANNOTATION;
 }
 
 void appendAnnotationToLastMemoryUnit(Environment * env, char * text) {

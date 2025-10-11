@@ -95,13 +95,11 @@ typedef struct {
 typedef struct {
     hex1_t value;
     char* annotation;
-    union {
-        long nInstruction;
-    } temp;
+    int nInstruction; // número da instrução
 } memoryUnit_t;
 #define EMPTY_ANNOTATION "" // Anotação vazia
 #define EVAL_DEFINED_MEMORY_ANNOTATION "Valor definido por uma instrucao" // Quando o trecho é definido por um setMemory()
-
+#define MEMORY_UNIT_NOT_INSTRUCTION (-1)
 
 // Ambiente do SAP2
 typedef struct {
@@ -123,7 +121,7 @@ typedef struct {
     // Os parâmetros passados para o usuário
     Parametros * params;
     // Instrução atual (quantas instruções já se passaram)
-    unsigned int currentInstruction;
+    int currentInstruction;
     // Endereços usados
     uhex2_t * usedAddresses;
     // Quantidade de endereços usados
@@ -216,6 +214,14 @@ void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value);
  * @param value o valor do hexadecimal (16 bytes, 2 hexadecimais)
  */
 void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value);
+
+/**
+ * Retorna o simbólico da n-ésima instrução.
+ * @param env o ambiente do SAP2
+ * @param n o número da instrução
+ * @return o texto da instrução (simbólico)
+ */
+char* getInstructionByNumber(Environment * env, int n);
 
 /**
  * Define o registrador dado com o valor dado e, se for o

@@ -14,7 +14,7 @@ Observações:
 - O `[arquivo_executavel]` vai estar em função do sistema do usuário (Windows/Linux, ARM, ...).
 Então, por exemplo, se o seu sistema for Windows (x64 ou x86), seu comando se aparentaria com:
 ```bash
-./sap2-interpreter-windows.exe arquivo.asm
+./sap2-interpreter-windows arquivo.asm
 ```
 - O arquivo, necessariamente, vem antes dos parâmetros.
 
@@ -26,12 +26,14 @@ Um exemplo de comando para o sistema operacional Ubuntu seria:
 ### Parâmetros:
 Os parâmetros que podem ser usados são são:
 - `--inicio <hexadecimal>`  ou `-i <hexadecimal>`: onde o contador de programa começará (no endereço `<hexadecimal>`);
-- `--limite <numero>` ou `-l <numero>`: quantidade máxima de instruções que serão executadas (dado pelo valor `<numero>`);
+- `--limite-instrucoes <numero>` ou `-li <numero>`: define a quantidade máxima de instruções que serão executadas (dado pelo inteiro positivo `<numero>`);
 - `--saida-limpa` ou `-sl`: desativa a impressão da tabela que mostra a memória no fim do programa (ao usar `HLT`);
 - `--debug`, `-d`, `--passo-a-passo` ou `-p`: ativa o modo de depuração, que executa uma instrução 
-por vez, mostrando informações a cada execução (como o valor dos registradores e dos flag).
+por vez, mostrando informações a cada execução (como o valor dos registradores e dos flag);
+- `--limite-tempo <numero>` ou `-lt <numero>`: define o tempo máximo, em milissegundos, que o programa poderá executar
+  (dado pelo número _double_ `<numero>`). Parâmetro útil quando o código for um _loop infinito_.
 
-Por exemplo, caso queira executar s:
+Por exemplo:
 ```bash
 ./sap2-interpreter-windows test.asm --inicio 1000H
 ```

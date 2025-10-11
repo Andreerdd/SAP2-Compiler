@@ -46,9 +46,9 @@ TokenType_t getTypeOfToken(char* text) {
 
     if (len == 1)
         switch (text[0]) {
-            case 'A':
-            case 'B':
-            case 'C': return TokenType_Register;
+            case 'A': case 'a':
+            case 'B': case 'b':
+            case 'C': case 'c': return TokenType_Register;
             case '\n':
             case '\r':
             case '\t': return TokenType_Space;

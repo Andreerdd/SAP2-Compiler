@@ -13,10 +13,11 @@
 #include "../ErrorCodes.h"
 #include "../Utils/Utils.h"
 #include "../Instructions/Instructions.h"
+#include "../environment.h"
 
 // Se o texto da instrução for o valor dado, analisa a instrução
 #define PARSE_IF_INSTRUCTION(I) \
-    else if (strcmp(t_instruction->value, #I) == 0) \
+    else if (compare_str_with_instruction(t_instruction->value, #I) == 0) \
     parse_##I(state);
 
 // O ambiente do estado atual do parser
@@ -90,6 +91,14 @@ void consume(ParserState* state) {
 Token_t* expect_and_consume(ParserState* state, TokenType_t expected_type) {
     Token_t* token = peek(state);
     if (token == NULL || token->type != expected_type) {
+
+        if (state->tokens[state->index-1].type == TokenType_Identifier && expected_type == TokenType_Colon) {
+            state->env->currentInstruction++;
+            VI_EXIT(EXIT_INVALID_ARGUMENT,
+                "O termo \"%s\" eh desconhecido. Se era para ser um rotulo,\n\tcoloque dois pontos em seguida. Se era para ser uma instrucao,\n\tela eh desconhecida.",
+                state->tokens[state->index-1].value);
+        }
+
         Token_t last_token;
         state->index--;
         do {
@@ -100,7 +109,8 @@ Token_t* expect_and_consume(ParserState* state, TokenType_t expected_type) {
                     tts = "Identificador/Desconhecido";
                 }
                 // Avisa o erro e sai do programa
-                VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe: esperado %s, encontrado \"%s\" (%s)\n",
+                VI_EXIT(EXIT_INVALID_ARGUMENT, "Erro de sintaxe em (%s): esperado %s, encontrado \"%s\" (%s)\n",
+
                 getTokenTypeString(expected_type),
                 token ? token->value : "null",
                 tts);
@@ -462,8 +472,9 @@ parsei(XRI) {
 // analisa uma instrução
 void parse_instruction(ParserState * state) {
     Token_t * t_instruction = expect_and_consume(state, TokenType_Instruction);
+    state->env->currentInstruction++;
 
-    if (strcmp(t_instruction->value, "HLT") == 0) {
+    if (compare_str_with_instruction(t_instruction->value, "HLT") == 0) {
         parse_HLT(state);
     }
     PARSE_IF_INSTRUCTION(ADD)
@@ -493,7 +504,6 @@ void parse_instruction(ParserState * state) {
     PARSE_IF_INSTRUCTION(XRA)
     PARSE_IF_INSTRUCTION(XRI)
 
-    state->env->currentInstruction++;
 }
 
 // analisa um identificador
