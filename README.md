@@ -3,7 +3,7 @@ Interpreter do microprocessador "Simple-As-Possible 2".
 De preferência, leia todo esse guia antes de usar o interpretador.
 
 ## Como usar?
-Obtenha o arquivo executável específico para seu caso _(Windows/Linux, ARM, ...)_ e execute-o da
+Obtenha o arquivo executável específico (na pasta [Executables](Executables)) para seu caso _(Windows/Linux, ARM, ...)_ e execute-o da
 forma como será mostrada abaixo.
 
 ## Comando:
