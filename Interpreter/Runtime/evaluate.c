@@ -87,6 +87,8 @@ hex2_t consume_hex2(Environment * env) {
 
 
 ErrorCode_t execute_instruction(Environment * env) {
+    if (env->memory[env->programCounter].value == OPCODE_NOP && env->memory[env->programCounter].annotation == NULL)
+        return EXIT_NO_INSTRUCTION;
     env->last_instruction = env->memory[env->programCounter];
     env->currentInstruction = env->last_instruction.nInstruction;
     uhex1_t opcode = consume_hex1(env);
@@ -187,6 +189,7 @@ ErrorCode_t execute_instruction(Environment * env) {
 
     // Simula o tempo dos T States
     sleep_us(getInstructionTStates(opcode));
+    env->totalInstructions++;
 
     return EXIT_SUCCESS;
 }
@@ -194,21 +197,23 @@ ErrorCode_t execute_instruction(Environment * env) {
 // Imprime as informações e espera o usuário apertar enter
 void debugIfOn(Environment * env) {
     if (env_params->debug_mode) {
-        // Para o print abaixo, eu poderia ter só voltado na memória
-        // até achar algo com uma anotação. No entanto, assim é mais
-        // bonitinho :)
-        printf("Instrucao atual: %s\n", env->last_instruction.annotation);
+        // Começa o cronômetro que verá quanto tempo
+        // está se passando no debug
+        stopWatch_s debug_sw;
+        stopWatch_start(&debug_sw);
+
+        printf("===========================\nInstrucao atual: %s\n===========================\n", env->last_instruction.annotation);
 
         // Se a última instrução for alguma específica, trata ela de forma diferente
         uhex1_t liv = env->last_instruction.value;
         if (liv == OPCODE_OUT) {
-            print_hex(_out_flow(env->hex_flow_buffer), env->registers[ACCUMULATOR]);
             printf("Saida atual: ");
-            printf(">> Pressione enter para continuar");
+            print_binary_hex(_out_flow(env->hex_flow_buffer), sizeof(hex1_t), env->registers[ACCUMULATOR]);
+            printf(">> Pressione enter para ver os dados");
             enter_to_continue();
         } else if (liv == OPCODE_IN) {
-            setRegister(env, ACCUMULATOR, get_1hex_from_in(env->hex_flow_buffer));
-            printf("\n");
+            setRegister(env, ACCUMULATOR, get_1hex_from_in(env, env->hex_flow_buffer));
+            printf("\n===========================\n");
         }
 
         print_debug_info(env);
@@ -216,6 +221,8 @@ void debugIfOn(Environment * env) {
         printf(">> Pressione enter para continuar");
         enter_to_continue();
         printf("\n\n\n\n");
+        stopWatch_end(&debug_sw);
+        env->params->real_max_time += seg_to_ms(stopWatch_timeElapsed(&debug_sw));
     }
 }
 
@@ -231,14 +238,14 @@ ErrorCode_t evaluate(Environment * env) {
                 env->currentInstruction,
                 env_params->max_evaluated);
         }
-        if ( seg_to_ms(stopWatch_timeElapsed(&local_stopwatch)) > env_params->max_time) {
+        if ( seg_to_ms(stopWatch_timeElapsed(&local_stopwatch)) > env_params->real_max_time) {
             // Imprime a memória (útil em alguns casos)
             if (env_params->hlt_prints_memory) {
                 print_info(env);
             }
 
             WARN(
-                "Instrucao %d (%s): nao foi possivel executar essa instrucao\nporque o programa atingiu o limite de tempo de execucao (%.3fs).\nSe quiser alterar esse limite, altere o parametro \"--limite-tempo\".",
+                "Instrucao %d (%s): apos essa instrucao, o programa\natingiu o limite de tempo de execucao (%.3fs). Se quiser alterar\nesse limite, altere o parametro \"--limite-tempo\".",
                 env->currentInstruction,
                 getInstructionByNumber(env, env->currentInstruction),
                 ms_to_seg(env_params->max_time)
@@ -248,7 +255,8 @@ ErrorCode_t evaluate(Environment * env) {
 
         err = execute_instruction(env);
         if (err != EXIT_SUCCESS) {
-            if (err == EXIT_HLT) // nesse caso, HLT é SUCESSO
+            // nesse caso, HLT e EXIT_NO_INSTRUCTION são SUCESSO.
+            if (err == EXIT_HLT || err == EXIT_NO_INSTRUCTION)
                 return EXIT_SUCCESS;
             debugIfOn(env);
             return err;

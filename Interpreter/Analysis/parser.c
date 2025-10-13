@@ -546,7 +546,7 @@ bool parse_statement(ParserState * state) {
             return false;
         }
 
-        default: VI_EXIT(EXIT_INVALID_INSTRUCTION, "Nao foi possivel analisar o trecho: %s", token->value);
+        default: VI_EXIT(EXIT_INVALID_TOKEN, "Nao foi possivel analisar o seguinte trecho: %s", token->value);
     }
 }
 

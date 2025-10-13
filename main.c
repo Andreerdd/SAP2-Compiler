@@ -113,8 +113,22 @@ int main(int argc, char ** argv) {
     // Interpreta o arquivo usando os parâmetros dados
     ErrorCode_t err = interpret(file, parametros);
     stopWatch_end(&stopWatch);
-    printf("\nSaida de Erro: %d\nTempo de execucao: %.3f segundos", err, stopWatch.elapsed_time);
-    
+
+    // Se não alterou o tempo máximo de execução durante o programa,
+    // imprime as informações normalmente
+    if (parametros->real_max_time == parametros->max_time) {
+        printf("\nSaida de Erro: %d\nTempo de execucao: %.3f segundos",
+            err,
+            stopWatch.elapsed_time);
+
+    // Se alterou, avisa ao usuário que considerou o tempo de
+    // depuração e de espera das entradas.
+    } else {
+        printf("\nSaida de Erro: %d\nTempo de execucao: %.3f segundos (considerando os tempos de espera)",
+            err,
+            stopWatch.elapsed_time);
+    }
+
     // Finaliza o programa
     free(parametros);
     return err;

@@ -287,7 +287,7 @@ void addInstruction(Environment * env, uhex1_t opcode) {
 
 void addInstructionWithHex1(Environment * env, uhex1_t opcode, hex1_t value) {
     addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %xH", (char*)getInstructionName(opcode), value)
+        formatString("%s %xH", (char*)getInstructionName(opcode), (uhex1_t)value)
         );
     setInstructionNumberToLastMemoryUnit(env, env->currentInstruction);
     addToMemoryHex1(env, value);
@@ -308,13 +308,13 @@ void addInstructionWithHex2(Environment * env, uhex1_t opcode, hex2_t value) {
         );
         } else {
             addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %x", (char*)getInstructionName(opcode), value)
+        formatString("%s %x", (char*)getInstructionName(opcode), (uhex2_t)value)
         );
         }
 
     } else {
         addToMemoryHex1Annotation(env, opcode,
-        formatString("%s %xH", (char*)getInstructionName(opcode), value)
+        formatString("%s %xH", (char*)getInstructionName(opcode), (uhex2_t)value)
         );
     }
     setInstructionNumberToLastMemoryUnit(env, env->currentInstruction);
@@ -433,16 +433,19 @@ void print_memory(Environment * env) {
 }
 
 void print_flags(Environment * env) {
-    printf("Flags ================\nFlag      | Valor\n");
-    printf("S (Sinal) | %d\n", env->flags[FLAG_S]);
-    printf("Z (Zero)  | %d\n\n", env->flags[FLAG_Z]);
+    printf("Flags ================\nFlag           | Valor\n");
+    printf("S (Sinal)      | %d\n", env->flags[FLAG_S]);
+    printf("Z (Zero)       | %d\n\n", env->flags[FLAG_Z]);
 }
 
 void print_regs(Environment * env) {
     printf("Registradores ========\nRegistrador    | Valor\n");
-    printf("A (Acumulador) | %xH\n", env->registers[ACCUMULATOR]);
-    printf("B              | %xH\n", env->registers[REGISTER_B]);
-    printf("C              | %xH\n", env->registers[REGISTER_C]);
+    printf("A (Acumulador) | %xH\t\t(Binario: ", (uhex1_t)env->registers[ACCUMULATOR]);
+    print_binary(1, env->registers[ACCUMULATOR]); printf(")\n");
+    printf("B              | %xH\t\t(Binario: ", (uhex1_t)env->registers[REGISTER_B]);
+    print_binary(1, env->registers[REGISTER_B]); printf(")\n");
+    printf("C              | %xH\t\t(Binario: ", (uhex1_t)env->registers[REGISTER_C]);
+    print_binary(1, env->registers[REGISTER_C]); printf(")\n");
 
 }
 
@@ -450,22 +453,26 @@ void print_regs(Environment * env) {
 void print_info(Environment * env) {
     print_memory(env);
     print_flags(env);
-    printf("Quantidade de instrucoes executadas: %u\n", env->currentInstruction);
+    printf("Quantidade de instrucoes executadas: %ld\n", env->totalInstructions);
 }
 
 void print_debug_info(Environment * env) {
-    printf("Quantidade de instrucoes executadas: %u\n", env->currentInstruction-1);
+    // inútil essa informação
+    //printf("Quantidade de instrucoes executadas: %u\n", env->currentInstruction-1);
     print_regs(env);
     print_flags(env);
 }
 
-hex1_t get_1hex_from_in(uhex1_t flow) {
-    char in[MAX_LENGTH_SINGLE_HEX + 1];
+hex1_t get_1hex_from_in(Environment * env, uhex1_t flow) {
+    stopWatch_s scanf_sw;
+    stopWatch_start(&scanf_sw);
+    char in[MAX_LENGTH_SINGLE_HEX + 1 + 1];
     if (_in_flow(flow) == stdinflow)
-        printf("\nEntrada atual:");
+        printf("\nEntrada atual: ");
 
-    fgets(in, MAX_LENGTH_SINGLE_HEX + 1, _in_flow(flow));
-    for (int i = MAX_LENGTH_SINGLE_HEX; i > 0; i--) {
+    fgets(in, MAX_LENGTH_SINGLE_HEX + 1 + 1, _in_flow(flow));
+    // Remove o 'H' (e o \n)
+    for (int i = MAX_LENGTH_SINGLE_HEX; i >= 0; i--) {
         if (in[i] == 'H' || isalpha(in[i])) break;
         in[i] = '\0';
     }
@@ -488,6 +495,9 @@ hex1_t get_1hex_from_in(uhex1_t flow) {
         }
     }
 
+    // Para o cronômetro e não conta esse tempo como tempo de execução
+    stopWatch_end(&scanf_sw);
+    env->params->real_max_time += seg_to_ms(stopWatch_timeElapsed(&scanf_sw));
     // Retorna o hexadecimal obtido
     return temp;
 }

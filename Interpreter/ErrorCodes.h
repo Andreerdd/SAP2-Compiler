@@ -24,7 +24,9 @@ typedef enum {
     EXIT_HLT = 7,                       // quando a instrução HLT é executada
     EXIT_INSTRUCTION_LIMIT_REACHED = 8, // quando o programa alcança o limite de instruções executadas
     EXIT_TIME_LIMIT_REACHED = 9,        // quando o programa alcança o limite de tempo
-    EXIT_ILLEGAL_HEX = 10               // quando é tentado colocar um hexadecimal de tamanho maior que aguenta
+    EXIT_ILLEGAL_HEX = 10,              // quando tenta colocar um hexadecimal de tamanho maior que aguenta
+    EXIT_NO_INSTRUCTION = 11,           // quando tenta ler uma instrução a partir de algo que não é uma instrução
+    EXIT_INVALID_TOKEN = 12             // o respectivo token é inválido/inesperado naquela situação
 } ErrorCode_t;
 
 // As mensagens de erro //
@@ -34,6 +36,7 @@ typedef enum {
 #define EXIT_INVALID_ARGUMENT_MESSAGE "Argumento Invalido"
 #define EXIT_INVALID_INSTRUCTION_MESSAGE "Instrucao Invalida"
 #define EXIT_ILLEGAL_HEX_MESSAGE "Numero hexadecimal excedeu o limite aceito"
+#define EXIT_INVALID_TOKEN_MESSAGE "Token inesperado"
 
 // Macros //
 
@@ -71,7 +74,7 @@ typedef enum {
 } while (0)
 // Com variadic args (estilo printf) e mostra em que instrução está
 #define VI_EXIT(E, format, ...) do {                                                                \
-    fprintf(stderr, "[ERRO] Instrucao %d: %s\n\t", state->env->currentInstruction, E##_MESSAGE);    \
+    fprintf(stderr, "[ERRO] Instrucao %d: %s\n\t", state->env->currentInstruction > 0 ? state->env->currentInstruction : 1 , E##_MESSAGE);    \
     fprintf(stderr, format, __VA_ARGS__); fprintf(stdout, "\n");                                    \
     exit(E);                                                                                        \
 } while (0)

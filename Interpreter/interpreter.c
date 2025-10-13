@@ -32,13 +32,14 @@ Parametros * get_standard_parameters() {
 // Interpreta o arquivo
 ErrorCode_t interpret(FILE * file, Parametros * params) {
 
-    ErrorCode_t err;
+    // Inicializa os parâmetros
+    params->real_max_time = params->max_time;
 
     // Obtem os tokens do arquivo
     Token_t * tokens = NULL;
     size_t tokens_size = 0;
 
-    err = tokenize(file, &tokens, &tokens_size);
+    ErrorCode_t err = tokenize(file, &tokens, &tokens_size);
     if (err != EXIT_SUCCESS || tokens == NULL || tokens[0].type == TokenType_EOF) {
         // Retorna o erro
         return err;
@@ -54,6 +55,7 @@ ErrorCode_t interpret(FILE * file, Parametros * params) {
 
         .params = params,
         .currentInstruction = 0,
+        .totalInstructions = 0,
         .usedAddresses = NULL,
         .usedAddressesSize = 0,
         .hex_print_buffer = 0,
@@ -94,6 +96,23 @@ ErrorCode_t interpret(FILE * file, Parametros * params) {
     ErrorCode_t exit_code = evaluate(&env);
 
     // Fim do código //
+
+    // Antes de sair, imprime a memória
+    // Obs.: A verificação de "env->usedAddressesSize > 0" é praticamente desnecessária,
+    // já que, para chegar aqui, precisaria de ter o OPCODE do HLT na memória
+    // (portanto, algum endereço da memória foi usado).
+    if (env.usedAddressesSize > 0 && env.params->hlt_prints_memory) {
+        print_info(&env);
+    }
+
+    // Verifica se a última instrução foi um HLT. Se
+    // não for, avisa ao usuário.
+    if (env.last_instruction.value != OPCODE_HLT) {
+        WARN(
+            "A ultima instrucao do codigo foi \"%s\" (Instrucao %d)\nao inves de um HLT! Certifique-se de colocar uma instrucao HLT\nno fim de seu codigo.",
+            env.last_instruction.annotation,
+            env.last_instruction.nInstruction);
+    }
 
     // Libera os tokens
     for (size_t i = 0; i < tokens_size; i++) {

@@ -44,15 +44,6 @@ ex_fn(execute_hlt) {
     // Tira do buffer e coloca na saida
     fflush(stdout);
 
-    // Antes de sair, imprime a memória
-
-    // A verificação de "env->usedAddressesSize > 0" é praticamente desnecessária,
-    // já que, para chegar aqui, precisaria de ter o OPCODE do HLT na memória
-    // (portanto, algum endereço da memória foi usado).
-    if (env->usedAddressesSize > 0 && env_params->hlt_prints_memory) {
-        print_info(env);
-    }
-
     return EXIT_HLT;
 }
 
@@ -98,7 +89,7 @@ ex_fn_val(execute_out) {
 
 ex_fn_val(execute_in) {
     if (!env_params->debug_mode) {
-        SET_ACC(get_1hex_from_in(value));
+        SET_ACC(get_1hex_from_in(env, value));
     } else {
         env->hex_flow_buffer = value;
     }
@@ -190,7 +181,7 @@ ErrorCode_t execute_ori(Environment* env, hex1_t value) {
     return EXIT_SUCCESS;
 }
 
-// RAL: A = (A << 1), LSB := 0 (simples)
+// RAL: A = (A << 1)
 ex_fn(execute_ral) {
     uhex1_t msb = (REG_A & 0x80) >> 7; // pega o bit 7 e coloca na posição 0
     uhex1_t result = ((REG_A << 1) | msb) & 0xFF;
@@ -198,16 +189,14 @@ ex_fn(execute_ral) {
     return EXIT_SUCCESS;
 }
 
-// RAR: A = (A >> 1), MSB -> LSB (simples)
+// RAR: A = (A >> 1)
 ex_fn(execute_rar) {
-    hex1_t msb = (REG_A & 0x80) ? 1 : 0;
-    //REG_A = (hex1_t)((REG_A >> 1) | (msb ? 0x80 : 0x00)); // descrição diz MSB vai para LSB
-    // Exatamente "MSB vai para LSB":
-    SET_ACC(REG_A >> 1);
+    // Tudo vai 1 posição para a direita e o MSB zera.
+    SET_ACC((REG_A >> 1) & 0x7F);
     return EXIT_SUCCESS;
 }
 
-// RET: PC = M[RET_ADDRESS] (endereço de retorno salvo previamente)
+// RET: PC = RET_ADDRESS (endereço de retorno salvo previamente)
 ex_fn(execute_ret) {
     hex1_t lsb = env_getmemval(RET_ADDRESS_LSB);
     hex1_t msb = env_getmemval(RET_ADDRESS_MSB);

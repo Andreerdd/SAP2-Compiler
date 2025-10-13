@@ -115,9 +115,18 @@ void stopWatch_start(stopWatch_s* sw);
 void stopWatch_end(stopWatch_s* sw);
 
 /**
- * Retorna o tempo (em segundos) passado desde o início do cronômetro dado.
+ * Retorna o tempo (em segundos) que o cronômetro durou. Se o
+ * cronômetro não tiver sido parado ainda, retorna o tempo (em
+ * segundos) passado desde o início do cronômetro dado.
  * @param sw o cronômetro
- * @return segundos passados desde o início do cronômetro
+ * @return tempo que o cronômetro durou (ou está durando)
  */
 double stopWatch_timeElapsed(stopWatch_s* sw);
+
+/**
+ * Imprime os bits do número dado
+ * @param size tamanho do número em bytes
+ * @param num número que se quer imprimir os bits
+ */
+void print_binary(int size, int num);
 #endif //SAP2_COMPILER_UTIL_H

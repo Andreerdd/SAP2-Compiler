@@ -209,18 +209,33 @@ void stopWatch_end(stopWatch_s* sw) {
 }
 
 double stopWatch_timeElapsed(stopWatch_s* sw) {
-#ifdef _WIN32
-    LARGE_INTEGER end_time;
-    QueryPerformanceCounter(&end_time);
+    if (sw->elapsed_time != 0)
+        return sw->elapsed_time;
 
-    return (double)(end_time.QuadPart - sw->start_time.QuadPart) / sw->frequency.QuadPart;
-#else
-#ifdef __linux__
-    struct timespec end_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    #ifdef _WIN32
+        LARGE_INTEGER end_time;
+        QueryPerformanceCounter(&end_time);
 
-    return (end_time.tv_sec - sw->start_time.tv_sec)
-           + (end_time.tv_nsec - sw->start_time.tv_nsec) / 1000000000.0;
-#endif
-#endif
+        return (double)(end_time.QuadPart - sw->start_time.QuadPart) / sw->frequency.QuadPart;
+    #else
+    #ifdef __linux__
+        struct timespec end_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+        return (end_time.tv_sec - sw->start_time.tv_sec)
+               + (end_time.tv_nsec - sw->start_time.tv_nsec) / 1000000000.0;
+    #endif
+    #endif
+}
+
+void print_binary(int size, int num) {
+    size *= 8;
+    // Imprime cada bit começando do MSB
+    for (int i = size-1; i >= 0; i--) {
+        // Arrasta o número i vezes e usa AND com 1
+        // para determinar se o valor é 0 ou 1
+        printf("%d", (num >> i) & 1);
+        // De 4 em 4 bits, dá um es
+        if (i % 4 == 0 && i != 0) printf(" ");
+    }
 }

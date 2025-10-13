@@ -8,6 +8,9 @@
 #ifndef SAP2_COMPILER_ENVIRONMENT_H
 #define SAP2_COMPILER_ENVIRONMENT_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #define NUMBER_OF_REGISTERS 3
 #define REGISTER_A 0
 #define REGISTER_B 1
@@ -19,7 +22,6 @@
 #define FLAG_Z 1
 
 #define MEMORY_SIZE UINT16_MAX // 65535 (que é 2 hexadecimais, 0xFFFF)
-#define STANDARD_STARTER_MEMORY_ADDRESS 0x8000 // entre 0000H e 07FFH, está o programa monitor
 
 // Endereços que guardarão o endereço onde RET direcionará
 #define RET_ADDRESS_LSB (MEMORY_SIZE - 2)
@@ -47,13 +49,15 @@
 // Quantos T-States são precisos para alterar o PC
 #define _ts_to_change_pc 3
 
-
-#include <stdbool.h>
-#include <stdint.h>
-
 #define env_params env->params
-#define print_hex(f, xv) fprintf(f, "%xH (Decimal: %d)\n", (uhex1_t)xv, xv)
 
+#define print_hex(f, xv) do { \
+    fprintf(f, "%xH (Decimal: %d)\n", (uhex1_t)xv, xv); \
+    } while (0);
+#define print_binary_hex(f, sz, xv) do { \
+    fprintf(f, "%xH (Decimal: %d  | Binario: ", (uhex1_t)xv, xv); \
+    print_binary(sz, xv); fprintf(f, ")\n"); \
+} while (0);
 
 // Valor de um hexadecimal (0xFF)
 typedef int8_t hex1_t;
@@ -65,6 +69,7 @@ typedef int16_t hex2_t;
 typedef uint16_t uhex2_t;
 
 
+#define STANDARD_STARTER_MEMORY_ADDRESS (0x8000) // entre 0000H e 07FFH, está o programa monitor(simulação)
 #define STANDARD_HLT_PRINTS_MEMORY true
 #define STANDARD_MAX_EVALUATE (-1)
 #define STANDARD_MAX_TIME (10000)
@@ -78,7 +83,12 @@ typedef struct {
     // Quantidade máxima de instruções que podem ser executadas
     int max_evaluated;
     // Quantidade máxima de tempo que o programa pode durar (em milissegundos)
+    // que o usuário escolheu.
     double max_time;
+    // Quantidade máxima de tempo que o programa pode durar (em milissegundos).
+    // Inicialmente, é definido para max_time (tempo pré-definido ou definido
+    // pelo usuário).
+    double real_max_time;
     // Se o modo de depuração está ativo
     bool debug_mode;
 } Parametros;
@@ -122,6 +132,7 @@ typedef struct {
     Parametros * params;
     // Instrução atual (quantas instruções já se passaram)
     int currentInstruction;
+    long totalInstructions;
     // Endereços usados
     uhex2_t * usedAddresses;
     // Quantidade de endereços usados
@@ -287,5 +298,5 @@ void print_debug_info(Environment * env);
  * @param flow o número que representa o lugar do fluxo de dados
  * @return Hexadecimal lido
  */
-hex1_t get_1hex_from_in(uhex1_t flow);
+hex1_t get_1hex_from_in(Environment * env, uhex1_t flow);
 #endif //SAP2_COMPILER_ENVIRONMENT_H

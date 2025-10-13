@@ -49,18 +49,7 @@ const char* INSTRUCTIONS[] = {
 };
 
 int compare_str_with_instruction(const char * inst, const char * str) {
-    size_t size_inst = strlen(inst), size_str = strlen(str);
-    // Se forem de tamanhos diferentes, é falso
-    if (size_inst != size_str) return size_inst > size_str ? 1 : -1;
-
-    for (size_t i = 0; i < size_inst; i++) {
-        int tli = tolower(inst[i]);
-        int tls = tolower(str[i]);
-        if (tli != tls) return tli > tls ? 1 : -1;
-    }
-
-    // Se chegou até aqui, é igual
-    return 0;
+    return strcmpi(inst, str);
 }
 
 /**
