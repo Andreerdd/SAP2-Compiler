@@ -15,3 +15,6 @@ OUT 0H
 
 SUB B ; A = (A+B+C)-B = A+C
 OUT 0H
+
+; Encerra o programa
+HLT
