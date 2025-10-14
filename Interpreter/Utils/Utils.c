@@ -4,6 +4,8 @@
 // Date: 18/09/2025
 //
 
+#define _DEFAULT_SOURCE
+
 #include <stdint.h>
 #include <stdarg.h> // VA ARGS
 
@@ -14,6 +16,7 @@
 #else
     #ifdef __linux__ // Verifica se é linux
         #include <unistd.h> // usleep
+        //#include <linux/time.h>
     #endif // __linux__
 #endif // _WIN32
 
@@ -134,6 +137,7 @@ void enter_to_continue() {
 }
 
 void windows_sleep_us(long microseconds) {
+    #ifdef _WIN32 // se for windows
     // Se a espera for muito curta, o overhead do timer não compensa,
     // então faz busy-wait.
     if (microseconds < 1000) {
@@ -166,6 +170,7 @@ void windows_sleep_us(long microseconds) {
 
     // Limpa o recurso
     CloseHandle(timer);
+    #endif
 }
 
 void sleep_us(long microseconds) {
@@ -174,7 +179,25 @@ void sleep_us(long microseconds) {
     #else
         // Se for linux, usa usleep
         #ifdef __linux__
-            usleep(microseconds);
+            // Busy-wait para espera curtas
+            if (microseconds < 1000) {
+                struct timespec start, current;
+                clock_gettime(CLOCK_MONOTONIC, &start);
+                long long start_ns = (long long)start.tv_sec * 1000000000 + start.tv_nsec;
+                long long limit_ns = microseconds * 1000;
+
+                while (1) {
+                    clock_gettime(CLOCK_MONOTONIC, &current);
+                    long long current_ns = (long long)current.tv_sec * 1000000000 + current.tv_nsec;
+
+                    if ((current_ns - start_ns) >= limit_ns) break;
+                    
+                }
+                
+            // Para esperas mais longas, usleep é eficiente.
+            } else {
+                usleep(microseconds);
+            }
         #endif //__linux__
     #endif // _WIN32
 }
