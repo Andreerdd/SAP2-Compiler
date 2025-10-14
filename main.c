@@ -129,6 +129,10 @@ int main(int argc, char ** argv) {
             stopWatch.elapsed_time);
     }
 
+    fflush(stdout);
+    printf("\n\n");
+    fflush(stdout);
+
     // Finaliza o programa
     free(parametros);
     return err;
