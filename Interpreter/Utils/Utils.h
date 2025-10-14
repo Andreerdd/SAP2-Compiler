@@ -7,6 +7,7 @@
 #ifndef SAP2_COMPILER_UTIL_H
 #define SAP2_COMPILER_UTIL_H
 
+
 // Headers necessários para o stopwatch
 #ifdef _WIN32
 #include <windows.h>
